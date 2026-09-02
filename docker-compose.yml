@@ -16,9 +16,13 @@ services:
       # Live Source Code Mounts - enables INSTANT updates without rebuilding Docker image!
       - ./src:/app/src
       - ./public:/app/public
+      - ./index.html:/app/index.html
+      - ./vite.config.ts:/app/vite.config.ts
       - ./server.ts:/app/server.ts
+      - ./entrypoint.sh:/app/entrypoint.sh
     environment:
       - PORT=3000
       - NODE_ENV=development
+      - DEV_MODE=true
       - SSH_USER=kali
       - SSH_PASSWORD=kali

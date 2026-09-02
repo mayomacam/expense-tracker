@@ -21,10 +21,9 @@ echo "✅ SSH Server active. Connect via: ssh kali@localhost -p 16000 (Password:
 mkdir -p /app/data
 chmod 777 /app/data
 
-# Start application server
-echo "⚡ Launching Expense Tracker Node.js Server on port ${PORT:-3000}..."
-if [ -f /app/dist/server.cjs ]; then
-    exec node /app/dist/server.cjs
-else
-    exec npm run dev
-fi
+# Export NODE_ENV=development so Vite dev middleware handles live source hot reloading
+export NODE_ENV=development
+export PORT=3000
+
+echo "⚡ Launching Live Hot-Reload Server (npx tsx server.ts)..."
+exec npx tsx server.ts
