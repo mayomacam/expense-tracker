@@ -1,0 +1,6 @@
+{
+  "name": "Expense & Prorated Budget Tracker",
+  "description": "An expense tracker with prorated daily limit analytics, budget alerts, savings & debt goals, recurring items, and CSV exports.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

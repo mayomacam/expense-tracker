@@ -1,0 +1,25 @@
+import {
+  Category,
+  Transaction,
+  ProratedBudgetRule,
+  SavingsGoal,
+  DebtItem,
+  RecurringItem,
+  UserSettings,
+} from '../types';
+import { getCurrentYearMonth } from '../utils/formatters';
+
+export const DEFAULT_CATEGORIES: Category[] = [
+  { id: 'cat-snacks', name: 'Snacks & Bites', icon: 'Cookie', color: '#F59E0B', monthlyBudget: 500, isCustom: true },
+  { id: 'cat-groceries', name: 'Groceries', icon: 'ShoppingBag', color: '#10B981', monthlyBudget: 600 },
+  { id: 'cat-dining', name: 'Dining Out & Cafes', icon: 'Utensils', color: '#EC4899', monthlyBudget: 350 },
+  { id: 'cat-housing', name: 'Rent & Housing', icon: 'Home', color: '#6366F1', monthlyBudget: 1500 },
+  { id: 'cat-utilities', name: 'Utilities & Bills', icon: 'Zap', color: '#3B82F6', monthlyBudget: 220 },
+  { id: 'cat-transport', name: 'Transportation', icon: 'Car', color: '#8B5CF6', monthlyBudget: 200 },
+  { id: 'cat-entertainment', name: 'Entertainment & Subs', icon: 'Tv', color: '#06B6D4', monthlyBudget: 120 },
+  { id: 'cat-shopping', name: 'Shopping & Gear', icon: 'Tag', color: '#F43F5E', monthlyBudget: 250 },
+  { id: 'cat-health', name: 'Health & Fitness', icon: 'HeartPulse', color: '#14B8A6', monthlyBudget: 100 },
+  { id: 'cat-salary', name: 'Salary & Wages', icon: 'Banknote', color: '#22C55E', monthlyBudget: 0 },
+  { id: 'cat-freelance', name: 'Freelance & Side Gig', icon: 'Laptop', color: '#EAB308', monthlyBudget: 0 },
+  { id: 'cat-investments', name: 'Investments / Returns', icon: 'TrendingUp', color: '#3B82F6', monthlyBudget: 0 },
+];
