@@ -35,16 +35,22 @@ import { formatCurrency, getMonthName } from '../../utils/formatters';
 import { CategoryIcon } from '../common/CategoryIcon';
 
 interface ProratedBudgetViewProps {
+<<<<<<< HEAD
   selectedRuleId?: string;
   onSelectRuleId?: (id: string) => void;
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
   onOpenAddTransaction: (defaultCategory?: string) => void;
   onOpenAddProratedModal: () => void;
   onEditProratedRule: (rule: ProratedBudgetRule) => void;
 }
 
 export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({
+<<<<<<< HEAD
   selectedRuleId: externalSelectedRuleId,
   onSelectRuleId,
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
   onOpenAddTransaction,
   onOpenAddProratedModal,
   onEditProratedRule,
@@ -59,13 +65,20 @@ export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({
     settings,
   } = useExpense();
 
+<<<<<<< HEAD
   const [internalSelectedRuleId, setInternalSelectedRuleId] = useState<string>(
+=======
+  const [selectedRuleId, setSelectedRuleId] = useState<string>(
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
     proratedRules[0]?.id || ''
   );
   const [chartMode, setChartMode] = useState<'cumulative' | 'daily'>('daily');
 
+<<<<<<< HEAD
   const selectedRuleId = externalSelectedRuleId || internalSelectedRuleId;
 
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
   // Selected Rule
   const activeRule = useMemo(() => {
     return proratedRules.find((r) => r.id === selectedRuleId) || proratedRules[0] || null;
@@ -124,7 +137,11 @@ export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({
 
   return (
     <div className="space-y-6">
+<<<<<<< HEAD
       {/* Top Banner */}
+=======
+      {/* Top Banner / Item Selector */}
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111114] p-5 rounded-2xl border border-white/[0.08] backdrop-blur-md">
         <div>
           <div className="flex items-center gap-2">
@@ -147,6 +164,7 @@ export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({
           </p>
         </div>
 
+<<<<<<< HEAD
         {/* Note indicating controls moved to Sidebar */}
         <div className="flex items-center gap-2 text-xs font-mono text-zinc-400 bg-white/[0.03] px-3.5 py-2 rounded-xl border border-white/10">
           <span className="w-2 h-2 rounded-full bg-[#c1ff72] animate-pulse" />
@@ -154,6 +172,56 @@ export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({
         </div>
       </div>
       </div>
+=======
+        {/* Rule Switcher & Manage Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {proratedRules.length > 1 && (
+            <select
+              id="select-prorated-rule-dropdown"
+              value={selectedRuleId}
+              onChange={(e) => setSelectedRuleId(e.target.value)}
+              className="px-3 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-[#c1ff72]"
+            >
+              {proratedRules.map((r) => (
+                <option key={r.id} value={r.id} className="bg-[#111114] text-white">
+                  {r.name} ({formatCurrency(r.monthlyMaxSpend, settings.currency)}/mo)
+                </option>
+              ))}
+            </select>
+          )}
+
+          <button
+            id="edit-active-prorated-btn"
+            type="button"
+            onClick={() => onEditProratedRule(activeRule)}
+            className="p-2 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-medium transition-colors"
+            title="Edit rule settings"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+
+          <button
+            id="add-another-prorated-btn"
+            type="button"
+            onClick={onOpenAddProratedModal}
+            className="px-3 py-2 bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors uppercase tracking-wider text-[11px]"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#c1ff72]" />
+            <span>New Tracker</span>
+          </button>
+
+          <button
+            id="log-snack-spend-btn"
+            type="button"
+            onClick={() => onOpenAddTransaction(activeRule.categoryId)}
+            className="px-4 py-2 bg-[#c1ff72] hover:bg-[#b0f05f] text-black font-bold rounded-xl text-xs shadow-[0_0_15px_rgba(193,255,114,0.3)] flex items-center gap-1.5 transition-all uppercase tracking-wider text-[11px]"
+          >
+            <Plus className="w-3.5 h-3.5 text-black" />
+            <span>Log {activeRule.name} Spend</span>
+          </button>
+        </div>
+      </div>
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

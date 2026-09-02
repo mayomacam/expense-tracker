@@ -23,8 +23,11 @@ import { AddCategoryModal } from './components/modals/AddCategoryModal';
 import { ExportReportModal } from './components/modals/ExportReportModal';
 import { NotificationCenterModal } from './components/modals/NotificationCenterModal';
 import { SqliteManagerModal } from './components/modals/SqliteManagerModal';
+<<<<<<< HEAD
 import { SidebarDrawer } from './components/SidebarDrawer';
 import { Sidebar } from './components/Sidebar';
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
 
 // Types
 import {
@@ -38,9 +41,14 @@ import { Plus, Calculator, Wallet, ReceiptText, PieChart } from 'lucide-react';
 
 const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+<<<<<<< HEAD
   const [selectedProratedRuleId, setSelectedProratedRuleId] = useState<string>('');
 
   // Modal & Drawer States
+=======
+
+  // Modal States
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
   const [isAddTxOpen, setIsAddTxOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [defaultCategoryForTx, setDefaultCategoryForTx] = useState<string | undefined>(undefined);
@@ -60,7 +68,10 @@ const MainApp: React.FC = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isSqliteOpen, setIsSqliteOpen] = useState(false);
+<<<<<<< HEAD
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
 
   // Handlers
   const handleOpenAddTransaction = (defaultCategoryId?: string) => {
@@ -129,6 +140,7 @@ const MainApp: React.FC = () => {
         onOpenExport={() => setIsExportModalOpen(true)}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         onOpenSqliteManager={() => setIsSqliteOpen(true)}
+<<<<<<< HEAD
         onOpenSidebar={() => setIsSidebarOpen((prev) => !prev)}
       />
 
@@ -206,6 +218,64 @@ const MainApp: React.FC = () => {
           </aside>
         )}
       </div>
+=======
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 sm:pb-8 relative z-10">
+        {activeTab === 'dashboard' && (
+          <DashboardView
+            onOpenAddTransaction={() => handleOpenAddTransaction()}
+            onNavigateTab={setActiveTab}
+            onOpenAddProrated={handleOpenAddProrated}
+          />
+        )}
+
+        {activeTab === 'prorated' && (
+          <ProratedBudgetView
+            onOpenAddTransaction={handleOpenAddTransaction}
+            onOpenAddProratedModal={handleOpenAddProrated}
+            onEditProratedRule={handleEditProrated}
+          />
+        )}
+
+        {activeTab === 'transactions' && (
+          <TransactionsView
+            onOpenAddTransaction={() => handleOpenAddTransaction()}
+            onEditTransaction={handleEditTransaction}
+            onOpenExport={() => setIsExportModalOpen(true)}
+          />
+        )}
+
+        {activeTab === 'reports' && (
+          <MonthlyReportView onOpenExport={() => setIsExportModalOpen(true)} />
+        )}
+
+        {activeTab === 'budgets' && (
+          <BudgetsAndRecurringView
+            onOpenAddCategory={handleOpenAddCategory}
+            onEditCategory={handleEditCategory}
+            onOpenAddTransaction={() => handleOpenAddTransaction()}
+          />
+        )}
+
+        {activeTab === 'savings_debt' && (
+          <SavingsAndDebtView
+            onOpenAddSavings={handleOpenAddSavings}
+            onEditSavings={handleEditSavings}
+            onOpenAddDebt={handleOpenAddDebt}
+            onEditDebt={handleEditDebt}
+          />
+        )}
+
+        {activeTab === 'settings' && (
+          <CategorySettingsView
+            onOpenAddCategory={handleOpenAddCategory}
+            onEditCategory={handleEditCategory}
+          />
+        )}
+      </main>
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
 
       {/* Mobile Floating Action Bar */}
       <div className="sm:hidden fixed bottom-4 right-4 z-40 flex items-center gap-2">
@@ -290,6 +360,7 @@ const MainApp: React.FC = () => {
         isOpen={isSqliteOpen}
         onClose={() => setIsSqliteOpen(false)}
       />
+<<<<<<< HEAD
 
       <SidebarDrawer
         isOpen={isSidebarOpen}
@@ -302,6 +373,8 @@ const MainApp: React.FC = () => {
         onEditProratedRule={handleEditProrated}
         onNavigateTab={setActiveTab}
       />
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
     </div>
   );
 };

@@ -4,7 +4,12 @@ dist/
 coverage/
 .DS_Store
 *.log
+<<<<<<< HEAD
 .env
 .env.local
 !.env.example
 data/*.sqlite
+=======
+.env*
+!.env.example
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879

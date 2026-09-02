@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+<<<<<<< HEAD
 import { X, Plus, Calendar, Tag as TagIcon, CreditCard, FileText, Check, AlertCircle } from 'lucide-react';
+=======
+import { X, Plus, Calendar, Tag as TagIcon, CreditCard, FileText, Check } from 'lucide-react';
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
 import { useExpense } from '../../context/ExpenseContext';
 import { CategoryIcon } from '../common/CategoryIcon';
 import { Transaction, TransactionType, PaymentMethod } from '../../types';
@@ -33,6 +37,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [tagInput, setTagInput] = useState('');
   const [notes, setNotes] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
+<<<<<<< HEAD
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Initialize or reset modal fields
@@ -41,6 +46,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
     setErrorMsg(null);
 
+=======
+
+  useEffect(() => {
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
     if (editingTransaction) {
       setType(editingTransaction.type);
       setTitle(editingTransaction.title);
@@ -52,16 +61,26 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       setNotes(editingTransaction.notes || '');
       setIsRecurring(!!editingTransaction.isRecurring);
     } else {
+<<<<<<< HEAD
       const initialType = defaultType;
       setType(initialType);
       setTitle('');
       setAmount('');
       setDate(getCurrentDateString());
       setPaymentMethod(initialType === 'income' ? 'bank_transfer' : 'credit_card');
+=======
+      setType(defaultType);
+      setTitle('');
+      setAmount('');
+      setCategory(defaultCategory || categories[0]?.id || '');
+      setDate(getCurrentDateString());
+      setPaymentMethod('credit_card');
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
       setTags([]);
       setTagInput('');
       setNotes('');
       setIsRecurring(false);
+<<<<<<< HEAD
 
       // Auto select appropriate category
       if (defaultCategory) {
@@ -90,6 +109,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     }
   };
 
+=======
+    }
+  }, [editingTransaction, isOpen, defaultType, defaultCategory, categories]);
+
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
   if (!isOpen) return null;
 
   const handleAddTag = () => {
@@ -114,6 +138,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+<<<<<<< HEAD
     setErrorMsg(null);
 
     const numAmount = parseFloat(amount);
@@ -171,6 +196,40 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     } catch (err: any) {
       setErrorMsg(`Failed to save transaction: ${err.message || 'Unknown error'}`);
     }
+=======
+    const numAmount = parseFloat(amount);
+    if (!title.trim() || isNaN(numAmount) || numAmount <= 0 || !category) {
+      return;
+    }
+
+    if (editingTransaction) {
+      updateTransaction(editingTransaction.id, {
+        title: title.trim(),
+        amount: numAmount,
+        type,
+        category,
+        date,
+        paymentMethod,
+        tags,
+        notes: notes.trim() || undefined,
+        isRecurring,
+      });
+    } else {
+      addTransaction({
+        title: title.trim(),
+        amount: numAmount,
+        type,
+        category,
+        date,
+        paymentMethod,
+        tags,
+        notes: notes.trim() || undefined,
+        isRecurring,
+      });
+    }
+
+    onClose();
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
   };
 
   return (
@@ -187,7 +246,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
             <div>
               <h3 className="text-lg font-extrabold text-white tracking-tight">
+<<<<<<< HEAD
                 {editingTransaction ? 'Edit Transaction' : type === 'income' ? 'Log Salary / Income' : 'Log New Expense'}
+=======
+                {editingTransaction ? 'Edit Transaction' : 'Log New Transaction'}
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
               </h3>
               <p className="text-xs text-zinc-400 font-mono">Record your daily outflow or inflow</p>
             </div>
@@ -201,6 +264,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[82vh] overflow-y-auto font-mono">
+<<<<<<< HEAD
             {/* Error Message Box */}
             {errorMsg && (
               <div className="p-3 rounded-xl bg-[#ff5f5f]/15 border border-[#ff5f5f]/40 text-[#ff5f5f] text-xs flex items-center gap-2 font-bold">
@@ -209,12 +273,18 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </div>
             )}
 
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
             {/* Type Switcher */}
             <div className="flex p-1 bg-white/5 border border-white/10 rounded-xl">
               <button
                 type="button"
                 id="type-expense-btn"
+<<<<<<< HEAD
                 onClick={() => handleTypeChange('expense')}
+=======
+                onClick={() => setType('expense')}
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                   type === 'expense'
                     ? 'bg-[#ff5f5f] text-white shadow-[0_0_10px_rgba(255,95,95,0.3)]'
@@ -226,14 +296,22 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               <button
                 type="button"
                 id="type-income-btn"
+<<<<<<< HEAD
                 onClick={() => handleTypeChange('income')}
+=======
+                onClick={() => setType('income')}
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                   type === 'income'
                     ? 'bg-[#c1ff72] text-black shadow-[0_0_10px_rgba(193,255,114,0.3)]'
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
+<<<<<<< HEAD
                 INFLOW / SALARY (+ IN)
+=======
+                INFLOW / INCOME (+)
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
               </button>
             </div>
 
@@ -241,7 +319,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-zinc-400 mb-1">
+<<<<<<< HEAD
                   Amount ({settings.currency}) *
+=======
+                  Amount ({settings.currency})
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">
@@ -253,7 +335,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     step="0.01"
                     min="0.01"
                     required
+<<<<<<< HEAD
                     placeholder="e.g. 50000"
+=======
+                    placeholder="0.00"
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="w-full pl-8 pr-3 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-white font-bold text-base focus:bg-white/[0.06] focus:outline-none focus:border-[#c1ff72]"
@@ -263,13 +349,21 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-zinc-400 mb-1">
+<<<<<<< HEAD
                   Description / Title *
+=======
+                  Description / Title
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                 </label>
                 <input
                   id="tx-title-input"
                   type="text"
                   required
+<<<<<<< HEAD
                   placeholder={type === 'income' ? 'e.g. Primary Tech Salary, Client Payout' : 'e.g. Grocery Shopping'}
+=======
+                  placeholder="e.g. Afternoon Latte & Snack"
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-white text-xs placeholder-zinc-500 focus:bg-white/[0.06] focus:outline-none focus:border-[#c1ff72]"
@@ -279,7 +373,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
             {/* Category */}
             <div>
+<<<<<<< HEAD
               <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Category *</label>
+=======
+              <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Category</label>
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-1 bg-white/[0.02] border border-white/10 rounded-xl">
                 {categories.map((cat) => {
                   const isSelected = category === cat.id;
@@ -315,7 +413,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-zinc-400 mb-1">
+<<<<<<< HEAD
                   Transaction Date *
+=======
+                  Transaction Date
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                 </label>
                 <div className="relative">
                   <input
@@ -339,11 +441,19 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                   onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                   className="w-full px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-zinc-200 text-xs focus:outline-none focus:border-[#c1ff72]"
                 >
+<<<<<<< HEAD
                   <option value="bank_transfer" className="bg-[#111114] text-white">🏛️ Bank Transfer</option>
                   <option value="digital_wallet" className="bg-[#111114] text-white">📱 Digital Wallet</option>
                   <option value="cash" className="bg-[#111114] text-white">💵 Cash</option>
                   <option value="credit_card" className="bg-[#111114] text-white">💳 Credit Card</option>
                   <option value="debit_card" className="bg-[#111114] text-white">💳 Debit Card</option>
+=======
+                  <option value="credit_card" className="bg-[#111114] text-white">💳 Credit Card</option>
+                  <option value="debit_card" className="bg-[#111114] text-white">💳 Debit Card</option>
+                  <option value="digital_wallet" className="bg-[#111114] text-white">📱 Digital Wallet</option>
+                  <option value="bank_transfer" className="bg-[#111114] text-white">🏛️ Bank Transfer</option>
+                  <option value="cash" className="bg-[#111114] text-white">💵 Cash</option>
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                 </select>
               </div>
             </div>
@@ -355,7 +465,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 <input
                   id="tx-tag-input"
                   type="text"
+<<<<<<< HEAD
                   placeholder="Add tag (e.g. salary, freelance, monthly)..."
+=======
+                  placeholder="Add tag (e.g. snacks, treats, work)..."
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -427,7 +541,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               <textarea
                 id="tx-notes-input"
                 rows={2}
+<<<<<<< HEAD
                 placeholder="Any special context, payment receipt note..."
+=======
+                placeholder="Any special context, vendor name, or receipt note..."
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="w-full px-3 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-[#c1ff72] resize-none"
@@ -439,7 +557,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               <div>
                 <span className="text-xs font-semibold text-white block">Mark as Recurring</span>
                 <span className="text-[11px] text-zinc-400">
+<<<<<<< HEAD
                   Auto-sync each month for fixed income or recurring expenses
+=======
+                  Auto-sync each month for fixed expenses/incomes
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                 </span>
               </div>
               <input

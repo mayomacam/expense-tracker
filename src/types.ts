@@ -74,8 +74,11 @@ export interface SavingsGoal {
 export interface DebtItem {
   id: string;
   name: string;
+<<<<<<< HEAD
   lenderName?: string; // "From Who" (e.g., "HDFC Bank", "Friend - Rahul", "Uncle Ramesh")
   debtType?: 'borrowed' | 'lent'; // 'borrowed' (taken from someone) | 'lent' (given to someone)
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
   totalPrincipal: number;
   remainingBalance: number;
   interestRate: number; // Annual %

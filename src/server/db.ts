@@ -125,8 +125,11 @@ function createSchema() {
     CREATE TABLE IF NOT EXISTS debts (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+<<<<<<< HEAD
       lenderName TEXT,
       debtType TEXT DEFAULT 'borrowed',
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
       totalPrincipal REAL NOT NULL,
       remainingBalance REAL NOT NULL,
       interestRate REAL NOT NULL,
@@ -487,6 +490,7 @@ export function populateDemoData() {
   // Debts + Payments
   for (const debt of demo.debts) {
     run(
+<<<<<<< HEAD
       `INSERT INTO debts (id, name, lenderName, debtType, totalPrincipal, remainingBalance, interestRate, minimumPayment, dueDay, notes, color)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -494,6 +498,13 @@ export function populateDemoData() {
         debt.name,
         debt.lenderName || null,
         debt.debtType || 'borrowed',
+=======
+      `INSERT INTO debts (id, name, totalPrincipal, remainingBalance, interestRate, minimumPayment, dueDay, notes, color)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        debt.id,
+        debt.name,
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
         debt.totalPrincipal,
         debt.remainingBalance,
         debt.interestRate,
@@ -907,8 +918,11 @@ export const debtRepo = {
       return {
         id: d.id,
         name: d.name,
+<<<<<<< HEAD
         lenderName: d.lenderName || undefined,
         debtType: (d.debtType as 'borrowed' | 'lent') || 'borrowed',
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
         totalPrincipal: Number(d.totalPrincipal),
         remainingBalance: Number(d.remainingBalance),
         interestRate: Number(d.interestRate),
@@ -935,8 +949,11 @@ export const debtRepo = {
     return {
       id: d.id,
       name: d.name,
+<<<<<<< HEAD
       lenderName: d.lenderName || undefined,
       debtType: (d.debtType as 'borrowed' | 'lent') || 'borrowed',
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
       totalPrincipal: Number(d.totalPrincipal),
       remainingBalance: Number(d.remainingBalance),
       interestRate: Number(d.interestRate),
@@ -950,11 +967,15 @@ export const debtRepo = {
   create(debt: Omit<DebtItem, 'remainingBalance' | 'payments'> & { remainingBalance?: number; payments?: any[] }): DebtItem {
     const fullDebt: DebtItem = {
       ...debt,
+<<<<<<< HEAD
       debtType: debt.debtType || 'borrowed',
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
       remainingBalance: debt.remainingBalance ?? debt.totalPrincipal,
       payments: debt.payments || [],
     };
     run(
+<<<<<<< HEAD
       `INSERT INTO debts (id, name, lenderName, debtType, totalPrincipal, remainingBalance, interestRate, minimumPayment, dueDay, notes, color)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -962,6 +983,13 @@ export const debtRepo = {
         fullDebt.name,
         fullDebt.lenderName || null,
         fullDebt.debtType || 'borrowed',
+=======
+      `INSERT INTO debts (id, name, totalPrincipal, remainingBalance, interestRate, minimumPayment, dueDay, notes, color)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        fullDebt.id,
+        fullDebt.name,
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
         fullDebt.totalPrincipal,
         fullDebt.remainingBalance,
         fullDebt.interestRate,
@@ -979,14 +1007,21 @@ export const debtRepo = {
     const merged: DebtItem = { ...existing, ...updates };
     run(
       `UPDATE debts SET 
+<<<<<<< HEAD
         name = ?, lenderName = ?, debtType = ?, totalPrincipal = ?, remainingBalance = ?, 
+=======
+        name = ?, totalPrincipal = ?, remainingBalance = ?, 
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
         interestRate = ?, minimumPayment = ?, dueDay = ?, 
         notes = ?, color = ?
        WHERE id = ?`,
       [
         merged.name,
+<<<<<<< HEAD
         merged.lenderName || null,
         merged.debtType || 'borrowed',
+=======
+>>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
         merged.totalPrincipal,
         merged.remainingBalance,
         merged.interestRate,
