@@ -1,0 +1,8 @@
+node_modules
+dist
+.antigravity
+.vscode
+.git
+.gitignore
+*.log
+*.bak
