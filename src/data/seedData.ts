@@ -430,49 +430,15 @@ export function getDemoSeedData() {
     {
       id: 'debt-student-loan',
       name: 'Federal Student Education Loan',
-<<<<<<< HEAD
       lenderName: 'Bank of Baroda / Govt Aid',
       debtType: 'borrowed',
-=======
->>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
-      totalPrincipal: 18500,
-      remainingBalance: 9800,
-      interestRate: 4.8,
-      minimumPayment: 210,
-      dueDay: 15,
-      color: '#3B82F6',
-      notes: 'Fixed interest subsidized federal student loan',
-      payments: [
-        {
-          id: 'p-1',
-          date: makeDate(1),
-          amount: 250,
-          principalPaid: 210.8,
-          interestPaid: 39.2,
-          note: 'Extra $40 over minimum payment',
-        },
-      ],
-    },
-    {
-      id: 'debt-car-loan',
-<<<<<<< HEAD
-      name: 'Personal Loan from Friend',
-      lenderName: 'Rahul Sharma (College Friend)',
-      debtType: 'borrowed',
-=======
-      name: 'Hybrid Vehicle Auto Loan',
->>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
       totalPrincipal: 14000,
       remainingBalance: 5200,
       interestRate: 3.9,
       minimumPayment: 320,
       dueDay: 20,
       color: '#EC4899',
-<<<<<<< HEAD
       notes: 'Personal loan borrowed for vehicle down payment',
-=======
-      notes: 'Credit union auto loan with 18 months remaining',
->>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
       payments: [
         {
           id: 'p-2',

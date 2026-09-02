@@ -356,7 +356,6 @@ export const SavingsAndDebtView: React.FC<SavingsAndDebtViewProps> = ({
                           <Landmark className="w-5 h-5" />
                         </div>
                         <div>
-<<<<<<< HEAD
                           <div className="flex items-center gap-2">
                             <h4 className="text-sm font-bold text-white">{debt.name}</h4>
                             <span
@@ -374,9 +373,6 @@ export const SavingsAndDebtView: React.FC<SavingsAndDebtViewProps> = ({
                               {debt.debtType === 'lent' ? 'Borrower' : 'Lender / From'}: {debt.lenderName}
                             </p>
                           )}
-=======
-                          <h4 className="text-sm font-bold text-white">{debt.name}</h4>
->>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
                           <span className="text-[11px] text-zinc-400 font-mono">
                             Due: Day {debt.dueDay} of each month
                           </span>

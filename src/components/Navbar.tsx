@@ -26,23 +26,7 @@ interface NavbarProps {
   onOpenNotifications: () => void;
   onOpenExport: () => void;
   onOpenSqliteManager: () => void;
-<<<<<<< HEAD
   onOpenSidebar: () => void;
-=======
->>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
-}
-
-export const Navbar: React.FC<NavbarProps> = ({
-  activeTab,
-  onTabChange,
-  onOpenAddTransaction,
-  onOpenNotifications,
-  onOpenExport,
-  onOpenSqliteManager,
-<<<<<<< HEAD
-  onOpenSidebar,
-=======
->>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
 }) => {
   const {
     selectedMonth,
