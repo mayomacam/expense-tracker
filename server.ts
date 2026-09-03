@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import {
   initDatabase,
   resetAllDataToZero,
@@ -18,6 +19,30 @@ import {
 
 const PORT = 3000;
 
+function getExpectedResetPassword(): string {
+  // Read password from unusual persistent secret file location or environment override
+  const secretFilePath = process.env.RESET_PASSWORD_FILE || path.join(process.cwd(), 'data', '.secret_reset_password.key');
+  try {
+    if (fs.existsSync(secretFilePath)) {
+      const pass = fs.readFileSync(secretFilePath, 'utf-8').trim();
+      if (pass) return pass;
+    }
+  } catch (err) {
+    console.warn('Warning reading password file:', err);
+  }
+
+  const defaultPass = process.env.RESET_PASSWORD || 'admin123';
+  try {
+    const dir = path.dirname(secretFilePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(secretFilePath, defaultPass, 'utf-8');
+    console.log(`🔐 Persistent reset password file initialized at: ${secretFilePath}`);
+  } catch (err) {
+    // Ignore file system write errors
+  }
+  return defaultPass;
+}
+
 async function startServer() {
   const app = express();
 
@@ -27,6 +52,14 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
+
+  // Gracefully handle malformed JSON syntax errors in request body
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof SyntaxError && 'status' in err && err.status === 400 && 'body' in err) {
+      return res.status(400).json({ error: 'Invalid JSON format in request body.' });
+    }
+    next(err);
+  });
 
   // Database status and management
   app.get('/api/db/status', (req, res) => {
@@ -38,19 +71,10 @@ async function startServer() {
     }
   });
 
-  app.post('/api/db/reset', (req, res) => {
-    try {
-      resetAllDataToZero();
-      res.json({ success: true, message: 'Database reset to clean zero records in SQLite.' });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/db/reset-to-zero', (req, res) => {
+  const handleResetToZeroEndpoint = (req: express.Request, res: express.Response) => {
     try {
       const { password } = req.body || {};
-      const expectedPassword = process.env.RESET_PASSWORD || 'admin123';
+      const expectedPassword = getExpectedResetPassword();
       if (!password || password !== expectedPassword) {
         return res.status(401).json({ error: 'Unauthorized: Invalid or missing reset password.' });
       }
@@ -59,7 +83,10 @@ async function startServer() {
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
-  });
+  };
+
+  app.post('/api/db/reset', handleResetToZeroEndpoint);
+  app.post('/api/db/reset-to-zero', handleResetToZeroEndpoint);
 
   app.post('/api/db/load-demo', (req, res) => {
     try {
