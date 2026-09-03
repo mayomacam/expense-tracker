@@ -474,6 +474,16 @@ async function startServer() {
     }
   });
 
+  app.delete('/api/debts/:debtId/payments/:paymentId', (req, res) => {
+    try {
+      const updatedDebt = debtRepo.deletePayment(req.params.debtId, req.params.paymentId);
+      if (!updatedDebt) return res.status(404).json({ error: 'Debt or payment log not found' });
+      res.json(updatedDebt);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Recurring Items
   app.get('/api/recurring', (req, res) => {
     try {

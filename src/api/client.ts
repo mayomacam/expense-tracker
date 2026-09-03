@@ -96,6 +96,8 @@ export const api = {
     fetch(`/api/debts/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; id: string }>),
   recordDebtPayment: (debtId: string, payment: Omit<DebtPaymentItem, 'id'>) =>
     fetch(`/api/debts/${debtId}/payments`, { method: 'POST', headers: jsonHeaders, body: JSON.stringify(payment) }).then(handleResponse<DebtItem>),
+  deleteDebtPayment: (debtId: string, paymentId: string) =>
+    fetch(`/api/debts/${debtId}/payments/${paymentId}`, { method: 'DELETE' }).then(handleResponse<DebtItem>),
 
   // Recurring Items
   getRecurring: () => fetch('/api/recurring').then(handleResponse<RecurringItem[]>),

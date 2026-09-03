@@ -67,6 +67,7 @@ interface ExpenseContextType {
   updateDebt: (id: string, debt: Partial<DebtItem>) => Promise<void>;
   deleteDebt: (id: string) => Promise<void>;
   recordDebtPayment: (debtId: string, payment: Omit<DebtPaymentItem, 'id'>) => Promise<void>;
+  deleteDebtPayment: (debtId: string, paymentId: string) => Promise<void>;
 
   // Recurring Items & Auto-Clone Service
   addRecurringItem: (item: Omit<RecurringItem, 'id'>) => Promise<RecurringItem>;
@@ -410,6 +411,11 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setDebts((prev) => prev.map((d) => (d.id === debtId ? updated : d)));
   };
 
+  const deleteDebtPayment = async (debtId: string, paymentId: string) => {
+    const updated = await api.deleteDebtPayment(debtId, paymentId);
+    setDebts((prev) => prev.map((d) => (d.id === debtId ? updated : d)));
+  };
+
   const addRecurringItem = async (item: Omit<RecurringItem, 'id'>) => {
     const created = await api.createRecurring(item);
     setRecurringItems((prev) => [...prev, created]);
@@ -592,6 +598,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateDebt,
         deleteDebt,
         recordDebtPayment,
+        deleteDebtPayment,
         addRecurringItem,
         updateRecurringItem,
         deleteRecurringItem,

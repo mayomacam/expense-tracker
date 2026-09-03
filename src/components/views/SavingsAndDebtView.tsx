@@ -33,6 +33,7 @@ export const SavingsAndDebtView: React.FC<SavingsAndDebtViewProps> = ({
     debts,
     deleteDebt,
     recordDebtPayment,
+    deleteDebtPayment,
     settings,
   } = useExpense();
   const { openModal } = useModal();
@@ -548,9 +549,19 @@ export const SavingsAndDebtView: React.FC<SavingsAndDebtViewProps> = ({
                                   <span className="text-zinc-500 block text-[10px]">Paid on {p.date}</span>
                                 </div>
                               </div>
-                              <span className="font-bold text-emerald-400">
-                                -{formatCurrency(p.amount, settings.currency)}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-emerald-400">
+                                  -{formatCurrency(p.amount, settings.currency)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteDebtPayment(debt.id, p.id)}
+                                  className="p-1 text-zinc-500 hover:text-rose-400 rounded hover:bg-zinc-800 transition-colors"
+                                  title="Delete payment entry"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
                           ))
                         )}
