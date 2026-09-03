@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Plus, Trash2, Tag, Calendar, Download } from 'lucide-react';
+import { Search, Filter, Plus, Trash2, Tag, Calendar, Download, Pencil } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
 import { useModal } from '../../context/ModalContext';
 import { formatCurrency, formatReadableDate, downloadCSV, generateTransactionsCSV } from '../../utils/formatters';
 import { CategoryIcon } from '../common/CategoryIcon';
+import { AddTransactionModal } from '../modals/AddTransactionModal';
+import { Transaction } from '../../types';
 
 interface TransactionsViewProps {
   onOpenAddTransaction?: () => void;
@@ -13,6 +15,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ onOpenAddTra
   const { transactions, categories, deleteTransaction, settings } = useExpense();
   const { openModal } = useModal();
   const [search, setSearch] = useState('');
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   const handleAddTransaction = () => {
     if (onOpenAddTransaction) {
@@ -207,14 +210,24 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ onOpenAddTra
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => deleteTransaction(tx.id)}
-                          className="p-1.5 text-zinc-400 hover:text-rose-400 rounded hover:bg-zinc-800"
-                          title="Move to Trash"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingTx(tx)}
+                            className="p-1.5 text-zinc-400 hover:text-white rounded hover:bg-zinc-800"
+                            title="Edit Transaction"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteTransaction(tx.id)}
+                            className="p-1.5 text-zinc-400 hover:text-rose-400 rounded hover:bg-zinc-800"
+                            title="Move to Trash"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -224,6 +237,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ onOpenAddTra
           </div>
         )}
       </div>
+
+      {editingTx && (
+        <AddTransactionModal
+          isOpen={Boolean(editingTx)}
+          onClose={() => setEditingTx(null)}
+          transactionToEdit={editingTx}
+        />
+      )}
     </div>
   );
 };

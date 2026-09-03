@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
-import { PaymentMethod, TransactionType } from '../../types';
+import { PaymentMethod, TransactionType, Transaction } from '../../types';
 import { getCurrentDateString } from '../../utils/formatters';
 
 interface AddTransactionModalProps {
@@ -9,6 +9,7 @@ interface AddTransactionModalProps {
   onClose: () => void;
   defaultCategoryId?: string;
   defaultDate?: string;
+  transactionToEdit?: Transaction | null;
 }
 
 export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
@@ -16,8 +17,9 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   onClose,
   defaultCategoryId,
   defaultDate,
+  transactionToEdit,
 }) => {
-  const { categories, proratedRules, addTransaction, settings } = useExpense();
+  const { categories, proratedRules, addTransaction, updateTransaction, settings } = useExpense();
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>('expense');
@@ -28,6 +30,30 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [tagsStr, setTagsStr] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (transactionToEdit) {
+      setTitle(transactionToEdit.title);
+      setAmount(String(transactionToEdit.amount));
+      setType(transactionToEdit.type);
+      setCategory(transactionToEdit.category);
+      setDate(transactionToEdit.date);
+      setPaymentMethod(transactionToEdit.paymentMethod);
+      setProratedRuleId(transactionToEdit.proratedRuleId || '');
+      setTagsStr(transactionToEdit.tags ? transactionToEdit.tags.join(', ') : '');
+      setNotes(transactionToEdit.notes || '');
+    } else {
+      setTitle('');
+      setAmount('');
+      setType('expense');
+      setCategory(defaultCategoryId || (categories[0]?.id ?? 'food'));
+      setDate(defaultDate || getCurrentDateString());
+      setPaymentMethod('credit_card');
+      setProratedRuleId('');
+      setTagsStr('');
+      setNotes('');
+    }
+  }, [transactionToEdit, isOpen, defaultCategoryId, defaultDate, categories]);
 
   if (!isOpen) return null;
 
@@ -42,27 +68,36 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         .map((t) => t.trim())
         .filter(Boolean);
 
-      await addTransaction({
-        title: title.trim(),
-        amount: Number(amount),
-        type,
-        category,
-        date,
-        paymentMethod,
-        tags,
-        notes: notes.trim() || undefined,
-        isRecurring: false,
-        proratedRuleId: proratedRuleId || undefined,
-      });
+      if (transactionToEdit) {
+        await updateTransaction(transactionToEdit.id, {
+          title: title.trim(),
+          amount: Number(amount),
+          type,
+          category,
+          date,
+          paymentMethod,
+          tags,
+          notes: notes.trim() || undefined,
+          proratedRuleId: proratedRuleId || undefined,
+        });
+      } else {
+        await addTransaction({
+          title: title.trim(),
+          amount: Number(amount),
+          type,
+          category,
+          date,
+          paymentMethod,
+          tags,
+          notes: notes.trim() || undefined,
+          isRecurring: false,
+          proratedRuleId: proratedRuleId || undefined,
+        });
+      }
 
       onClose();
-      setTitle('');
-      setAmount('');
-      setProratedRuleId('');
-      setTagsStr('');
-      setNotes('');
     } catch (err) {
-      console.error('Error adding transaction:', err);
+      console.error('Error saving transaction:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -73,7 +108,9 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       <div className="fixed inset-0 bg-black/70 backdrop-blur-xs" onClick={onClose} />
       <div className="relative w-full max-w-md bg-[#16161a] border border-[#27272a] rounded-xl p-5 z-10 shadow-xl">
         <div className="flex items-center justify-between pb-3 border-b border-[#27272a]">
-          <h2 className="text-base font-semibold text-white">Add Transaction</h2>
+          <h2 className="text-base font-semibold text-white">
+            {transactionToEdit ? 'Edit Transaction' : 'Add Transaction'}
+          </h2>
           <button
             type="button"
             onClick={onClose}
