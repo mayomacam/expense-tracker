@@ -17,13 +17,14 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   defaultCategoryId,
   defaultDate,
 }) => {
-  const { categories, addTransaction, settings } = useExpense();
+  const { categories, proratedRules, addTransaction, settings } = useExpense();
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>('expense');
   const [category, setCategory] = useState(defaultCategoryId || (categories[0]?.id ?? 'food'));
   const [date, setDate] = useState(defaultDate || getCurrentDateString());
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit_card');
+  const [proratedRuleId, setProratedRuleId] = useState<string>('');
   const [tagsStr, setTagsStr] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,11 +52,13 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         tags,
         notes: notes.trim() || undefined,
         isRecurring: false,
+        proratedRuleId: proratedRuleId || undefined,
       });
 
       onClose();
       setTitle('');
       setAmount('');
+      setProratedRuleId('');
       setTagsStr('');
       setNotes('');
     } catch (err) {
@@ -179,6 +182,26 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </select>
             </div>
           </div>
+
+          {type === 'expense' && proratedRules.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-zinc-300 mb-1">
+                Allocate to Prorated Budget Rule (Optional)
+              </label>
+              <select
+                value={proratedRuleId}
+                onChange={(e) => setProratedRuleId(e.target.value)}
+                className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c1ff72]"
+              >
+                <option value="">None (Independent General Expense)</option>
+                {proratedRules.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} (Cap: {settings.currency}{r.monthlyMaxSpend})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1">

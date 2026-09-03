@@ -36,14 +36,18 @@ export function calculateProratedRule(
 
   const effectiveBudget = rule.monthlyMaxSpend + (rule.rolloverEnabled ? (rule.rolloverAmount || 0) : 0);
 
-  // Filter transactions belonging to this rule
+  // Filter transactions belonging ONLY to this independent prorated rule
   const matchingTransactions = transactions.filter((tx) => {
     if (tx.type !== 'expense') return false;
     if (!tx.date.startsWith(ruleMonth)) return false;
 
-    if (rule.categoryId && tx.category === rule.categoryId) return true;
-    if (rule.targetTags && rule.targetTags.length > 0) {
-      return rule.targetTags.some((tag) => tx.tags && tx.tags.includes(tag));
+    // Prorated budget rules are completely independent from general category/tag expenses.
+    // ONLY transactions explicitly allocated to this prorated rule count towards it.
+    if (tx.proratedRuleId) {
+      return tx.proratedRuleId === rule.id;
+    }
+    if (tx.notes && tx.notes.includes(`[prorated:${rule.id}]`)) {
+      return true;
     }
     return false;
   });

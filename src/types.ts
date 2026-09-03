@@ -15,6 +15,7 @@ export interface Transaction {
   isRecurring?: boolean;
   recurringFrequency?: string;
   receiptUrl?: string;
+  proratedRuleId?: string;
 }
 
 export interface Category {

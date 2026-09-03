@@ -40,8 +40,9 @@ export const LogProratedSpendModal: React.FC<LogProratedSpendModalProps> = ({
         date,
         tags,
         paymentMethod: 'credit_card',
-        notes: `Quick logged against prorated rule: ${rule.name}`,
+        notes: `Quick logged against prorated rule: ${rule.name} [prorated:${rule.id}]`,
         isRecurring: false,
+        proratedRuleId: rule.id,
       });
 
       onClose();
