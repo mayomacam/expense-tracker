@@ -234,7 +234,7 @@ const MainApp: React.FC = () => {
           setEditingTransaction(null);
           setDefaultDateForTx(undefined);
         }}
-        initialTransaction={editingTransaction}
+        editingTransaction={editingTransaction}
         defaultCategoryId={defaultCategoryForTx}
         defaultDate={defaultDateForTx}
       />
@@ -245,7 +245,7 @@ const MainApp: React.FC = () => {
           setIsProratedModalOpen(false);
           setEditingProratedRule(null);
         }}
-        initialRule={editingProratedRule}
+        editingRule={editingProratedRule}
       />
 
       <AddSavingsGoalModal
@@ -254,7 +254,7 @@ const MainApp: React.FC = () => {
           setIsSavingsModalOpen(false);
           setEditingSavingsGoal(null);
         }}
-        initialGoal={editingSavingsGoal}
+        editingGoal={editingSavingsGoal}
       />
 
       <AddDebtModal
@@ -263,7 +263,7 @@ const MainApp: React.FC = () => {
           setIsDebtModalOpen(false);
           setEditingDebt(null);
         }}
-        initialDebt={editingDebt}
+        editingDebt={editingDebt}
       />
 
       <AddCategoryModal
@@ -272,7 +272,7 @@ const MainApp: React.FC = () => {
           setIsCategoryModalOpen(false);
           setEditingCategory(null);
         }}
-        initialCategory={editingCategory}
+        editingCategory={editingCategory}
       />
 
       <ExportReportModal

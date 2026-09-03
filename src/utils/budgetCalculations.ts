@@ -21,15 +21,37 @@ export function getTransactionsForRule(
   return transactions.filter((t) => {
     if (t.type !== 'expense') return false;
 
+    // Explicit tag link match
+    if (t.tags && t.tags.some((tag) => tag.toLowerCase() === `rule:${rule.id}`.toLowerCase())) {
+      return true;
+    }
+
     // Direct category match
     if (rule.categoryId && t.category === rule.categoryId) return true;
 
-    // Title match
-    if (rule.name && t.title.toLowerCase().includes(rule.name.toLowerCase())) return true;
+    // Title match (flexible substring or partial match)
+    if (rule.name) {
+      const rName = rule.name.toLowerCase().trim();
+      const tTitle = t.title.toLowerCase().trim();
+      if (tTitle.includes(rName) || rName.includes(tTitle)) return true;
+
+      // Match common partial words (e.g. "biscit" or "biscuit" or "snack")
+      const ruleWords = rName.split(/\s+/).filter((w) => w.length > 2);
+      const titleWords = tTitle.split(/\s+/).filter((w) => w.length > 2);
+      if (ruleWords.some((rw) => titleWords.some((tw) => tw.includes(rw) || rw.includes(tw)))) {
+        return true;
+      }
+    }
 
     // Tag match
     if (rule.targetTags && rule.targetTags.length > 0 && t.tags) {
-      if (rule.targetTags.some((tag) => t.tags.includes(tag))) return true;
+      if (
+        rule.targetTags.some((tag) =>
+          t.tags.some((tTag) => tTag.toLowerCase().includes(tag.toLowerCase()))
+        )
+      ) {
+        return true;
+      }
     }
 
     return false;

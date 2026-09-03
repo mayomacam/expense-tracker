@@ -23,7 +23,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   defaultCategory,
   defaultDate,
 }) => {
-  const { categories, addTransaction, updateTransaction, allTags, settings } = useExpense();
+  const { categories, proratedRules, addTransaction, updateTransaction, allTags, settings } = useExpense();
 
   const [type, setType] = useState<TransactionType>(defaultType);
   const [title, setTitle] = useState('');
@@ -35,6 +35,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [tagInput, setTagInput] = useState('');
   const [notes, setNotes] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
+  const [selectedProratedRuleId, setSelectedProratedRuleId] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Initialize or reset modal fields
@@ -142,16 +143,29 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       }
     }
 
+    let finalCategory = selectedCategory;
+    let finalTags = [...tags];
+
+    if (type === 'expense' && selectedProratedRuleId) {
+      const pRule = proratedRules.find((r) => r.id === selectedProratedRuleId);
+      if (pRule) {
+        if (pRule.categoryId) finalCategory = pRule.categoryId;
+        const ruleTag = `rule:${pRule.id}`;
+        const nameTag = pRule.name.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        finalTags = Array.from(new Set([...finalTags, ruleTag, nameTag]));
+      }
+    }
+
     try {
       if (editingTransaction) {
         updateTransaction(editingTransaction.id, {
           title: title.trim(),
           amount: numAmount,
           type,
-          category: selectedCategory,
+          category: finalCategory,
           date,
           paymentMethod,
-          tags,
+          tags: finalTags,
           notes: notes.trim() || undefined,
           isRecurring,
         });
@@ -160,10 +174,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           title: title.trim(),
           amount: numAmount,
           type,
-          category: selectedCategory,
+          category: finalCategory,
           date,
           paymentMethod,
-          tags,
+          tags: finalTags,
           notes: notes.trim() || undefined,
           isRecurring,
         });
@@ -311,6 +325,40 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 })}
               </div>
             </div>
+
+            {/* Optional Prorated Limit Tracker Connection */}
+            {type === 'expense' && proratedRules.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 mb-1 flex items-center justify-between">
+                  <span>Link to Prorated Budget Tracker (Optional)</span>
+                  <span className="text-[10px] text-[#c1ff72] font-mono">Prorated Pacing</span>
+                </label>
+                <select
+                  id="tx-prorated-link-select"
+                  value={selectedProratedRuleId}
+                  onChange={(e) => {
+                    const ruleId = e.target.value;
+                    setSelectedProratedRuleId(ruleId);
+                    if (ruleId) {
+                      const rule = proratedRules.find((r) => r.id === ruleId);
+                      if (rule && rule.categoryId) {
+                        setCategory(rule.categoryId);
+                      }
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] hover:bg-white/[0.06] border border-white/15 rounded-xl text-white text-xs font-mono focus:outline-none focus:border-[#c1ff72] cursor-pointer"
+                >
+                  <option value="" className="bg-[#111114] text-zinc-400">
+                    -- None (General Category Spending) --
+                  </option>
+                  {proratedRules.map((rule) => (
+                    <option key={rule.id} value={rule.id} className="bg-[#111114] text-white">
+                      ★ {rule.name} (Monthly Cap: {formatCurrency(rule.monthlyMaxSpend, settings.currency)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Date & Payment Method */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

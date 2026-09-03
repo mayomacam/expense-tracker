@@ -34,6 +34,9 @@ A unique budgeting method that transforms coarse monthly budget limits into acti
   - Eliminates the need to navigate through the complex general expense modal for daily prorated spend.
 - **1-Click Prorated Tracker Switcher**:
   - Switch between trackers (*Snacks & Treats*, *Travel*, *Food*, etc.) with a single click using the **Sidebar Tracker Menu** or the top **Pill Tab Bar**.
+- **Manual Expense Connection & Unlinked Items**:
+  - **In-Form Connection**: Select a Prorated Tracker directly from `AddTransactionModal` to automatically link any new or edited transaction.
+  - **On-Page Unlinked Items Card**: Visual card on `ProratedBudgetView` listing all unlinked month transactions with 1-click `+ Link to [Tracker]` buttons.
 - **Day-by-Day Calendar Ledger**:
   - Displays every day in the month from Day 1 to Day 28/30/31.
   - Shows date, day of week, individual day spend, daily limit benchmark, cumulative month-to-date total, and current status (`Under Limit`, `Exceeded`, or `No Spend`).

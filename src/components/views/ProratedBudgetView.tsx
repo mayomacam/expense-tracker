@@ -27,10 +27,11 @@ import {
   Info,
   Cookie,
   Coffee,
+  Link2,
 } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
 import { ProratedBudgetRule, Transaction } from '../../types';
-import { calculateProratedDailyBreakdown } from '../../utils/budgetCalculations';
+import { calculateProratedDailyBreakdown, getTransactionsForRule } from '../../utils/budgetCalculations';
 import { formatCurrency, getMonthName } from '../../utils/formatters';
 import { CategoryIcon } from '../common/CategoryIcon';
 import { LogProratedSpendModal } from '../modals/LogProratedSpendModal';
@@ -59,6 +60,7 @@ export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({
     selectedMonth,
     deleteProratedRule,
     deleteTransaction,
+    updateTransaction,
     settings,
   } = useExpense();
 
@@ -703,6 +705,69 @@ export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Manual Link Unlinked Expenses to Active Prorated Tracker */}
+      {activeRule && (
+        <div className="bg-[#111114] border border-white/[0.08] rounded-2xl p-5 backdrop-blur-md font-mono space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#c1ff72]/20 text-[#c1ff72] flex items-center justify-center font-bold">
+                <Link2 className="w-4 h-4 text-[#c1ff72]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-white uppercase tracking-tight">
+                  Connect Existing Expenses to {activeRule.name}
+                </h3>
+                <p className="text-[11px] text-zinc-400">
+                  Manually link unallocated transactions from your ledger directly to this prorated limit tracker
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] text-zinc-300 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 font-bold">
+              {unlinkedMonthTransactions.length} Unlinked Item(s)
+            </span>
+          </div>
+
+          {unlinkedMonthTransactions.length === 0 ? (
+            <p className="text-xs text-zinc-500 italic p-3 rounded-xl bg-white/[0.02] border border-white/5 text-center">
+              All expense transactions for {getMonthName(selectedMonth)} are linked to this tracker or categorized.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto pr-1">
+              {unlinkedMonthTransactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.06] flex items-center justify-between gap-3 text-xs"
+                >
+                  <div className="truncate">
+                    <div className="font-bold text-white truncate">{tx.title}</div>
+                    <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                      {tx.date} • {formatCurrency(tx.amount, settings.currency)}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const existingTags = tx.tags || [];
+                      const ruleTag = `rule:${activeRule.id}`;
+                      const nameTag = activeRule.name.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                      const newTags = Array.from(new Set([...existingTags, ruleTag, nameTag]));
+                      updateTransaction(tx.id, {
+                        category: activeRule.categoryId || tx.category,
+                        tags: newTags,
+                      });
+                    }}
+                    className="shrink-0 px-3 py-1.5 bg-[#c1ff72]/15 hover:bg-[#c1ff72] text-[#c1ff72] hover:text-black font-extrabold rounded-lg text-[10px] border border-[#c1ff72]/30 transition-all uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_10px_rgba(193,255,114,0.15)]"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Link to {activeRule.name}</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Streamlined Prorated Quick Spend Modal */}
       <LogProratedSpendModal
