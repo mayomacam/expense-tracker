@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Receipt,
@@ -10,25 +11,60 @@ import {
   Trash2,
   Database,
   Download,
-  AlertTriangle,
 } from 'lucide-react';
 import { ActiveTab } from '../types';
 import { useExpense } from '../context/ExpenseContext';
+import { useModal } from '../context/ModalContext';
 
 interface SidebarProps {
-  activeTab: ActiveTab;
-  onSelectTab: (tab: ActiveTab) => void;
-  onOpenExportModal: () => void;
-  onOpenSqliteManager: () => void;
+  activeTab?: ActiveTab;
+  onSelectTab?: (tab: ActiveTab) => void;
+  onOpenExportModal?: () => void;
+  onOpenSqliteManager?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  activeTab,
+  activeTab: propActiveTab,
   onSelectTab,
   onOpenExportModal,
   onOpenSqliteManager,
 }) => {
-  const { deletedTransactions, unreadAlertCount, dbStatus } = useExpense();
+  const { deletedTransactions } = useExpense();
+  const { openModal } = useModal();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Determine active tab from route or prop
+  const currentPath = location.pathname.replace(/^\//, '') || 'dashboard';
+  const derivedTab: ActiveTab =
+    currentPath === 'savings-debt' || currentPath === 'savings_debt'
+      ? 'savings_debt'
+      : (currentPath as ActiveTab);
+  const activeTab = propActiveTab || derivedTab;
+
+  const handleSelectTab = (tab: ActiveTab) => {
+    if (onSelectTab) {
+      onSelectTab(tab);
+    }
+    const route = tab === 'savings_debt' ? '/savings-debt' : `/${tab}`;
+    navigate(route);
+  };
+
+  const handleExport = () => {
+    if (onOpenExportModal) {
+      onOpenExportModal();
+    } else {
+      openModal('export_report');
+    }
+  };
+
+  const handleSqliteManager = () => {
+    if (onOpenSqliteManager) {
+      onOpenSqliteManager();
+    } else {
+      openModal('sqlite_manager');
+    }
+  };
 
   const navItems = [
     { id: 'dashboard' as ActiveTab, label: 'Dashboard', icon: LayoutDashboard },
@@ -59,7 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={item.id}
               type="button"
-              onClick={() => onSelectTab(item.id)}
+              onClick={() => handleSelectTab(item.id)}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-zinc-800 text-white font-semibold'
@@ -83,8 +119,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-4 border-t border-[#27272a] space-y-2">
         <button
           type="button"
-          onClick={onOpenExportModal}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-lg transition-colors"
+          onClick={handleExport}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-lg transition-colors cursor-pointer"
         >
           <Download className="w-3.5 h-3.5 text-[#c1ff72]" />
           <span>Export CSV &amp; PDF</span>
@@ -92,8 +128,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           type="button"
-          onClick={onOpenSqliteManager}
-          className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-zinc-400 hover:text-white bg-zinc-900/50 hover:bg-zinc-800/80 border border-zinc-800 rounded-lg transition-colors"
+          onClick={handleSqliteManager}
+          className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-zinc-400 hover:text-white bg-zinc-900/50 hover:bg-zinc-800/80 border border-zinc-800 rounded-lg transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2">
             <Database className="w-3.5 h-3.5 text-[#c1ff72]" />

@@ -1,18 +1,28 @@
 import React, { useState, useMemo } from 'react';
 import { Scale, Plus, Trash2, Calendar, AlertTriangle, CheckCircle2, ChevronRight, Zap } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
+import { useModal } from '../../context/ModalContext';
 import { ProratedBudgetRule } from '../../types';
 import { calculateProratedRule } from '../../utils/budgetCalculations';
 import { formatCurrency } from '../../utils/formatters';
 import { LogProratedSpendModal } from '../modals/LogProratedSpendModal';
 
 interface ProratedBudgetViewProps {
-  onOpenAddProrated: () => void;
+  onOpenAddProrated?: () => void;
 }
 
 export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({ onOpenAddProrated }) => {
   const { proratedRules, transactions, deleteProratedRule, updateProratedRule, settings } = useExpense();
+  const { openModal } = useModal();
   const [activeSpendRule, setActiveSpendRule] = useState<ProratedBudgetRule | null>(null);
+
+  const handleAddProrated = () => {
+    if (onOpenAddProrated) {
+      onOpenAddProrated();
+    } else {
+      openModal('add_prorated');
+    }
+  };
 
   const calculations = useMemo(() => {
     return proratedRules.map((rule) => calculateProratedRule(rule, transactions, new Date()));
@@ -35,8 +45,8 @@ export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({ onOpenAd
         </div>
         <button
           type="button"
-          onClick={onOpenAddProrated}
-          className="px-3.5 py-2 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5 self-start sm:self-auto"
+          onClick={handleAddProrated}
+          className="px-3.5 py-2 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>New Prorated Rule</span>

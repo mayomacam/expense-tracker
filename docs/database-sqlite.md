@@ -176,13 +176,15 @@ CREATE TABLE IF NOT EXISTS recurring_items (
   category TEXT NOT NULL,
   frequency TEXT NOT NULL,           -- 'monthly', 'weekly', 'yearly'
   dayOfMonth INTEGER DEFAULT 1,
-  autoApply INTEGER DEFAULT 1,
+  autoApply INTEGER DEFAULT 1,       -- 1: automatically cloned at month start, 0: manual-only
   tags TEXT DEFAULT '[]',
   paymentMethod TEXT NOT NULL,
-  lastAppliedMonth TEXT,
+  lastAppliedMonth TEXT,             -- 'YYYY-MM' of the most recent month applied (prevents duplicate clones)
   isActive INTEGER DEFAULT 1
 );
 ```
+
+> **Automated Month-Start Cloning**: When the backend `/api/recurring/apply` endpoint runs, it selects active records where `isActive = 1` and `lastAppliedMonth != :month`. If `forceAll` is not set, it additionally filters for `autoApply = 1`. Each matching record is inserted into `transactions` with a date corresponding to the item's `dayOfMonth` in the target month, and `lastAppliedMonth` is updated atomically to avoid duplication.
 
 ### 2.8 `user_settings` & `read_alerts`
 ```sql

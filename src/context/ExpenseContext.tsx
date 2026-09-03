@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Transaction,
   Category,
@@ -10,6 +10,7 @@ import {
   RecurringItem,
   UserSettings,
   NotificationAlert,
+  AutoCloneServiceStatus,
 } from '../types';
 import { api } from '../api/client';
 import { calculateProratedRule } from '../utils/budgetCalculations';
@@ -64,11 +65,14 @@ interface ExpenseContextType {
   deleteDebt: (id: string) => Promise<void>;
   recordDebtPayment: (debtId: string, payment: Omit<DebtPaymentItem, 'id'>) => Promise<void>;
 
-  // Recurring Items
+  // Recurring Items & Auto-Clone Service
   addRecurringItem: (item: Omit<RecurringItem, 'id'>) => Promise<RecurringItem>;
   updateRecurringItem: (id: string, item: Partial<RecurringItem>) => Promise<void>;
   deleteRecurringItem: (id: string) => Promise<void>;
-  applyRecurringForMonth: (month?: string) => Promise<number>;
+  applyRecurringForMonth: (month?: string, forceAll?: boolean) => Promise<number>;
+  autoCloneRecurringService: (targetMonth?: string, forceAll?: boolean) => Promise<{ addedCount: number; clonedTitles: string[] }>;
+  toggleRecurringAutoApply: (id: string, autoApply?: boolean) => Promise<void>;
+  autoCloneStatus: AutoCloneServiceStatus;
 
   // Settings
   updateSettings: (updates: Partial<UserSettings>) => Promise<void>;
@@ -108,6 +112,29 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dbStatus, setDbStatus] = useState<any>(null);
+
+  const [autoCloneStatus, setAutoCloneStatus] = useState<AutoCloneServiceStatus>({
+    lastRunMonth: '',
+    lastRunTimestamp: null,
+    lastClonedCount: 0,
+    lastClonedTitles: [],
+    isRunning: false,
+    totalConfigured: 0,
+    autoApplyEnabledCount: 0,
+  });
+
+  const [serviceAlerts, setServiceAlerts] = useState<NotificationAlert[]>([]);
+  const hasInitializedAutoCloneRef = useRef(false);
+  const lastAutoClonedMonthRef = useRef('');
+
+  // Keep counts in autoCloneStatus in sync with recurringItems
+  useEffect(() => {
+    setAutoCloneStatus((prev) => ({
+      ...prev,
+      totalConfigured: recurringItems.length,
+      autoApplyEnabledCount: recurringItems.filter((r) => r.autoApply !== false && r.isActive !== false).length,
+    }));
+  }, [recurringItems]);
 
   const refreshFromDb = useCallback(async () => {
     try {
@@ -234,8 +261,16 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     }
 
+    // Include auto-clone service notifications
+    for (const sAlert of serviceAlerts) {
+      list.push({
+        ...sAlert,
+        isRead: readAlertIds.includes(sAlert.id),
+      });
+    }
+
     return list;
-  }, [proratedRules, transactions, categories, debts, settings, readAlertIds]);
+  }, [proratedRules, transactions, categories, debts, settings, readAlertIds, serviceAlerts]);
 
   const unreadAlertCount = useMemo(() => alerts.filter((a) => !a.isRead).length, [alerts]);
 
@@ -370,11 +405,99 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setRecurringItems((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const applyRecurringForMonth = async (month?: string) => {
-    const res = await api.applyRecurringItems(month);
+  const toggleRecurringAutoApply = async (id: string, autoApply?: boolean) => {
+    const item = recurringItems.find((r) => r.id === id);
+    if (!item) return;
+    const newSetting = autoApply !== undefined ? autoApply : !item.autoApply;
+    await updateRecurringItem(id, { autoApply: newSetting });
+  };
+
+  const autoCloneRecurringService = useCallback(
+    async (targetMonth?: string, forceAll?: boolean) => {
+      const month = targetMonth || new Date().toISOString().slice(0, 7);
+      setAutoCloneStatus((prev) => ({ ...prev, isRunning: true }));
+      try {
+        const res = await api.applyRecurringItems(month, forceAll);
+        lastAutoClonedMonthRef.current = month;
+        if (res.addedCount > 0) {
+          const [updatedTxs, updatedRecs] = await Promise.all([
+            api.getTransactions().catch(() => []),
+            api.getRecurring().catch(() => []),
+          ]);
+          setTransactions(updatedTxs);
+          setRecurringItems(updatedRecs);
+
+          const alertId = `alert-autoclone-${month}-${Date.now()}`;
+          const newAlert: NotificationAlert = {
+            id: alertId,
+            title: `Auto-Cloned Recurring (${month})`,
+            message: `Auto-clone service cloned ${res.addedCount} recurring item(s) for ${month}: ${res.clonedTitles?.join(', ') || ''}.`,
+            type: 'success',
+            date: new Date().toISOString().slice(0, 10),
+            isRead: false,
+          };
+          setServiceAlerts((prev) => [newAlert, ...prev]);
+        }
+
+        setAutoCloneStatus((prev) => ({
+          ...prev,
+          lastRunMonth: month,
+          lastRunTimestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          lastClonedCount: res.addedCount,
+          lastClonedTitles: res.clonedTitles || [],
+          isRunning: false,
+          totalConfigured: recurringItems.length,
+          autoApplyEnabledCount: recurringItems.filter((r) => r.autoApply !== false && r.isActive !== false).length,
+        }));
+
+        return { addedCount: res.addedCount, clonedTitles: res.clonedTitles || [] };
+      } catch (err: any) {
+        console.error('Failed to execute auto-clone recurring service:', err);
+        setAutoCloneStatus((prev) => ({ ...prev, isRunning: false }));
+        return { addedCount: 0, clonedTitles: [] };
+      }
+    },
+    [recurringItems]
+  );
+
+  const applyRecurringForMonth = async (month?: string, forceAll?: boolean) => {
+    const res = await api.applyRecurringItems(month, forceAll);
     await refreshFromDb();
     return res.addedCount;
   };
+
+  // Service Lifecycle Hook 1: Automatically clone recurring transactions on initial load at start of month
+  useEffect(() => {
+    if (!isLoading && !hasInitializedAutoCloneRef.current) {
+      hasInitializedAutoCloneRef.current = true;
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      autoCloneRecurringService(currentMonth, false);
+    }
+  }, [isLoading, autoCloneRecurringService]);
+
+  // Service Lifecycle Hook 2: Monitor for month rollover (runs periodically & on window visibility change)
+  useEffect(() => {
+    const checkMonthTransition = () => {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      if (lastAutoClonedMonthRef.current && lastAutoClonedMonthRef.current !== currentMonth) {
+        console.log(`[AutoCloneService] Calendar month rollover detected: ${lastAutoClonedMonthRef.current} -> ${currentMonth}`);
+        autoCloneRecurringService(currentMonth, false);
+      }
+    };
+
+    const interval = setInterval(checkMonthTransition, 30000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkMonthTransition();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [autoCloneRecurringService]);
 
   const updateSettings = async (updates: Partial<UserSettings>) => {
     const updated = await api.updateSettings(updates);
@@ -454,6 +577,9 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateRecurringItem,
         deleteRecurringItem,
         applyRecurringForMonth,
+        autoCloneRecurringService,
+        toggleRecurringAutoApply,
+        autoCloneStatus,
         updateSettings,
         markAlertRead,
         markAllAlertsRead,

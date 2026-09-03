@@ -1,15 +1,25 @@
 import React, { useState } from 'react';
 import { Tag, Plus, Trash2, Settings, Check } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
+import { useModal } from '../../context/ModalContext';
 import { CategoryIcon } from '../common/CategoryIcon';
 
 interface CategorySettingsViewProps {
-  onOpenAddCategory: () => void;
+  onOpenAddCategory?: () => void;
 }
 
 export const CategorySettingsView: React.FC<CategorySettingsViewProps> = ({ onOpenAddCategory }) => {
   const { categories, deleteCategory, settings, updateSettings } = useExpense();
+  const { openModal } = useModal();
   const [currency, setCurrency] = useState(settings.currency);
+
+  const handleAddCategory = () => {
+    if (onOpenAddCategory) {
+      onOpenAddCategory();
+    } else {
+      openModal('add_category');
+    }
+  };
   const [userName, setUserName] = useState(settings.userName || '');
   const [warningThreshold, setWarningThreshold] = useState(
     String(settings.monthlyBudgetWarningThreshold)
@@ -38,8 +48,8 @@ export const CategorySettingsView: React.FC<CategorySettingsViewProps> = ({ onOp
           </div>
           <button
             type="button"
-            onClick={onOpenAddCategory}
-            className="px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5"
+            onClick={handleAddCategory}
+            className="px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New Category</span>

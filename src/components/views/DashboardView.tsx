@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp,
   TrendingDown,
@@ -10,15 +11,16 @@ import {
   Plus,
 } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
+import { useModal } from '../../context/ModalContext';
 import { ActiveTab } from '../../types';
 import { calculateProratedRule } from '../../utils/budgetCalculations';
 import { formatCurrency, formatReadableDate } from '../../utils/formatters';
 import { CategoryIcon } from '../common/CategoryIcon';
 
 interface DashboardViewProps {
-  onNavigateTab: (tab: ActiveTab) => void;
-  onOpenAddTransaction: () => void;
-  onOpenAddProrated: () => void;
+  onNavigateTab?: (tab: ActiveTab) => void;
+  onOpenAddTransaction?: () => void;
+  onOpenAddProrated?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -27,6 +29,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenAddProrated,
 }) => {
   const { transactions, categories, proratedRules, savingsGoals, debts, settings } = useExpense();
+  const { openModal } = useModal();
+  const navigate = useNavigate();
+
+  const handleNavigate = (tab: ActiveTab) => {
+    if (onNavigateTab) {
+      onNavigateTab(tab);
+    }
+    navigate(tab === 'savings_debt' ? '/savings-debt' : `/${tab}`);
+  };
+
+  const handleAddTransaction = () => {
+    if (onOpenAddTransaction) {
+      onOpenAddTransaction();
+    } else {
+      openModal('add_transaction');
+    }
+  };
+
+  const handleAddProrated = () => {
+    if (onOpenAddProrated) {
+      onOpenAddProrated();
+    } else {
+      openModal('add_prorated');
+    }
+  };
 
   const currentMonth = settings.selectedMonth || new Date().toISOString().slice(0, 7);
 
@@ -77,16 +104,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onOpenAddTransaction}
-            className="px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5"
+            onClick={handleAddTransaction}
+            className="px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Spend</span>
           </button>
           <button
             type="button"
-            onClick={() => onNavigateTab('prorated')}
-            className="px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors flex items-center gap-1.5"
+            onClick={() => handleNavigate('prorated')}
+            className="px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Scale className="w-3.5 h-3.5 text-[#c1ff72]" />
             <span>Prorated Limits</span>
@@ -156,8 +183,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => onNavigateTab('prorated')}
-            className="text-xs text-[#c1ff72] hover:underline flex items-center gap-1"
+            onClick={() => handleNavigate('prorated')}
+            className="text-xs text-[#c1ff72] hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>All Rules</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -169,8 +196,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="text-xs text-zinc-400">No prorated rules configured yet.</p>
             <button
               type="button"
-              onClick={onOpenAddProrated}
-              className="mt-2 px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg"
+              onClick={handleAddProrated}
+              className="mt-2 px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg cursor-pointer"
             >
               Create Prorated Rule
             </button>
@@ -238,8 +265,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <h3 className="text-sm font-semibold text-white">Recent Transactions</h3>
           <button
             type="button"
-            onClick={() => onNavigateTab('transactions')}
-            className="text-xs text-[#c1ff72] hover:underline flex items-center gap-1"
+            onClick={() => handleNavigate('transactions')}
+            className="text-xs text-[#c1ff72] hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>View All</span>
             <ArrowRight className="w-3.5 h-3.5" />

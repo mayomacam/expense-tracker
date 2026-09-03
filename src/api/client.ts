@@ -93,8 +93,8 @@ export const api = {
     fetch(`/api/recurring/${id}`, { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(updates) }).then(handleResponse<RecurringItem>),
   deleteRecurring: (id: string) =>
     fetch(`/api/recurring/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; id: string }>),
-  applyRecurringItems: (month?: string) =>
-    fetch('/api/recurring/apply', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ month }) }).then(handleResponse<{ success: boolean; addedCount: number; month: string }>),
+  applyRecurringItems: (month?: string, forceAll?: boolean) =>
+    fetch('/api/recurring/apply', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ month, forceAll }) }).then(handleResponse<{ success: boolean; addedCount: number; month: string; clonedTitles?: string[] }>),
 
   // Settings
   getSettings: () => fetch('/api/settings').then(handleResponse<UserSettings>),

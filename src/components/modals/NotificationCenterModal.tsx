@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, CheckCheck, AlertCircle, AlertTriangle, Info, Check } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
 import { ActiveTab } from '../../types';
@@ -6,7 +7,7 @@ import { ActiveTab } from '../../types';
 interface NotificationCenterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onNavigateTab: (tab: ActiveTab) => void;
+  onNavigateTab?: (tab: ActiveTab) => void;
 }
 
 export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = ({
@@ -15,8 +16,18 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   onNavigateTab,
 }) => {
   const { alerts, markAlertRead, markAllAlertsRead, clearReadAlerts } = useExpense();
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
+
+  const handleNavigate = (tab: ActiveTab) => {
+    if (onNavigateTab) {
+      onNavigateTab(tab);
+    } else {
+      navigate(tab === 'savings_debt' ? '/savings-debt' : `/${tab}`);
+    }
+    onClose();
+  };
 
   const getAlertIcon = (type: string) => {
     switch (type) {
@@ -94,11 +105,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   <div className="flex items-center gap-3 mt-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        onNavigateTab('prorated');
-                        onClose();
-                      }}
-                      className="text-[11px] text-[#c1ff72] hover:underline font-medium"
+                      onClick={() => handleNavigate('prorated')}
+                      className="text-[11px] text-[#c1ff72] hover:underline font-medium cursor-pointer"
                     >
                       View Limit &rarr;
                     </button>

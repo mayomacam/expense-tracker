@@ -265,7 +265,7 @@ The Expense & Prorated Budget Tracker exposes a standard RESTful HTTP API on por
 
 ### 8.1 List Recurring Templates
 - **Method**: `GET /api/recurring`
-- **Response**: `200 OK`
+- **Response**: `200 OK` (Array of recurring item objects including `autoApply`, `dayOfMonth`, `lastAppliedMonth`, and `isActive`)
 
 ### 8.2 Create Recurring Item
 - **Method**: `POST /api/recurring`
@@ -278,21 +278,47 @@ The Expense & Prorated Budget Tracker exposes a standard RESTful HTTP API on por
     "category": "utilities",
     "frequency": "monthly",
     "dayOfMonth": 5,
-    "paymentMethod": "auto_debit"
+    "autoApply": true,
+    "paymentMethod": "credit_card",
+    "tags": ["recurring", "wifi"]
   }
   ```
 - **Response**: `201 Created`
 
-### 8.3 Auto-Apply Recurring Entries
+### 8.3 Update Recurring Item & Auto-Clone Toggle
+- **Method**: `PUT /api/recurring/:id`
+- **Request Body**: Partial object of fields to update (e.g. `{ "autoApply": false }` or `{ "amount": 1299 }`)
+- **Response**: `200 OK` (returns updated recurring object)
+
+### 8.4 Delete Recurring Item
+- **Method**: `DELETE /api/recurring/:id`
+- **Response**: `200 OK` (`{ "success": true, "id": "..." }`)
+
+### 8.5 Automated Month-Start & Manual Clone Service
 - **Method**: `POST /api/recurring/apply`
-- **Request Body**: `{ "month": "2026-09" }`
-- **Description**: Generates concrete transaction records for all active recurring items matching the month that haven't been applied yet.
+- **Request Body**:
+  ```json
+  {
+    "month": "2026-09",
+    "forceAll": false
+  }
+  ```
+  - `month` *(string, optional)*: Target billing month in `YYYY-MM` format. Defaults to the current calendar month if omitted.
+  - `forceAll` *(boolean, optional)*:
+    - When `false` (default): Only items with `autoApply: true` (or not explicitly false) and `isActive: true` that have not yet been applied for `month` are cloned into `transactions`.
+    - When `true`: Bypasses the `autoApply` filter and clones **all** active recurring items that have not yet been applied for `month`.
+- **Deduplication Logic**: Compares `lastAppliedMonth` against `month`. If an item was already applied for the specified month, it is automatically skipped to prevent double-billing.
 - **Response**: `200 OK`
   ```json
   {
     "success": true,
     "addedCount": 3,
-    "month": "2026-09"
+    "month": "2026-09",
+    "clonedTitles": [
+      "Internet Fiber Broadband",
+      "Netflix Subscription",
+      "Health Insurance Premium"
+    ]
   }
   ```
 

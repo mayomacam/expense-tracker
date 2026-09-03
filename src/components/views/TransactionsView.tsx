@@ -1,16 +1,26 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, Plus, Trash2, Tag, Calendar, Download } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
+import { useModal } from '../../context/ModalContext';
 import { formatCurrency, formatReadableDate, downloadCSV, generateTransactionsCSV } from '../../utils/formatters';
 import { CategoryIcon } from '../common/CategoryIcon';
 
 interface TransactionsViewProps {
-  onOpenAddTransaction: () => void;
+  onOpenAddTransaction?: () => void;
 }
 
 export const TransactionsView: React.FC<TransactionsViewProps> = ({ onOpenAddTransaction }) => {
   const { transactions, categories, deleteTransaction, settings } = useExpense();
+  const { openModal } = useModal();
   const [search, setSearch] = useState('');
+
+  const handleAddTransaction = () => {
+    if (onOpenAddTransaction) {
+      onOpenAddTransaction();
+    } else {
+      openModal('add_transaction');
+    }
+  };
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState<'all' | 'income' | 'expense'>('all');
   const [selectedPayment, setSelectedPayment] = useState('all');
@@ -59,8 +69,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ onOpenAddTra
           </button>
           <button
             type="button"
-            onClick={onOpenAddTransaction}
-            className="px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5"
+            onClick={handleAddTransaction}
+            className="px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Transaction</span>

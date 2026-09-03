@@ -101,6 +101,16 @@ export interface RecurringItem {
   isActive: boolean;
 }
 
+export interface AutoCloneServiceStatus {
+  lastRunMonth: string;
+  lastRunTimestamp: string | null;
+  lastClonedCount: number;
+  lastClonedTitles: string[];
+  isRunning: boolean;
+  totalConfigured: number;
+  autoApplyEnabledCount: number;
+}
+
 export interface UserSettings {
   id?: string;
   currency: string;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   X,
   LayoutDashboard,
@@ -14,27 +15,65 @@ import {
 } from 'lucide-react';
 import { ActiveTab } from '../types';
 import { useExpense } from '../context/ExpenseContext';
+import { useModal } from '../context/ModalContext';
 
 interface SidebarDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  activeTab: ActiveTab;
-  onSelectTab: (tab: ActiveTab) => void;
-  onOpenExportModal: () => void;
-  onOpenSqliteManager: () => void;
+  activeTab?: ActiveTab;
+  onSelectTab?: (tab: ActiveTab) => void;
+  onOpenExportModal?: () => void;
+  onOpenSqliteManager?: () => void;
 }
 
 export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   isOpen,
   onClose,
-  activeTab,
+  activeTab: propActiveTab,
   onSelectTab,
   onOpenExportModal,
   onOpenSqliteManager,
 }) => {
   const { deletedTransactions } = useExpense();
+  const { openModal } = useModal();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
+
+  const currentPath = location.pathname.replace(/^\//, '') || 'dashboard';
+  const derivedTab: ActiveTab =
+    currentPath === 'savings-debt' || currentPath === 'savings_debt'
+      ? 'savings_debt'
+      : (currentPath as ActiveTab);
+  const activeTab = propActiveTab || derivedTab;
+
+  const handleSelectTab = (tab: ActiveTab) => {
+    if (onSelectTab) {
+      onSelectTab(tab);
+    }
+    const route = tab === 'savings_debt' ? '/savings-debt' : `/${tab}`;
+    navigate(route);
+    onClose();
+  };
+
+  const handleExport = () => {
+    if (onOpenExportModal) {
+      onOpenExportModal();
+    } else {
+      openModal('export_report');
+    }
+    onClose();
+  };
+
+  const handleSqliteManager = () => {
+    if (onOpenSqliteManager) {
+      onOpenSqliteManager();
+    } else {
+      openModal('sqlite_manager');
+    }
+    onClose();
+  };
 
   const navItems = [
     { id: 'dashboard' as ActiveTab, label: 'Dashboard', icon: LayoutDashboard },
@@ -81,10 +120,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => {
-                    onSelectTab(item.id);
-                    onClose();
-                  }}
+                  onClick={() => handleSelectTab(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-zinc-800 text-white font-semibold'
@@ -109,22 +145,16 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
         <div className="pt-4 border-t border-[#27272a] space-y-2">
           <button
             type="button"
-            onClick={() => {
-              onOpenExportModal();
-              onClose();
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-zinc-300 bg-zinc-900 border border-zinc-700 rounded-lg"
+            onClick={handleExport}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-zinc-300 bg-zinc-900 border border-zinc-700 rounded-lg cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-[#c1ff72]" />
             <span>Export CSV / PDF</span>
           </button>
           <button
             type="button"
-            onClick={() => {
-              onOpenSqliteManager();
-              onClose();
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-zinc-400 bg-zinc-900/50 border border-zinc-800 rounded-lg"
+            onClick={handleSqliteManager}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-zinc-400 bg-zinc-900/50 border border-zinc-800 rounded-lg cursor-pointer"
           >
             <Database className="w-3.5 h-3.5 text-[#c1ff72]" />
             <span>SQLite Database</span>

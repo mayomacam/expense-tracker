@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { PiggyBank, CreditCard, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
+import { useModal } from '../../context/ModalContext';
 import { formatCurrency, getCurrentDateString } from '../../utils/formatters';
 
 interface SavingsAndDebtViewProps {
-  onOpenAddSavings: () => void;
-  onOpenAddDebt: () => void;
+  onOpenAddSavings?: () => void;
+  onOpenAddDebt?: () => void;
 }
 
 export const SavingsAndDebtView: React.FC<SavingsAndDebtViewProps> = ({
@@ -21,6 +22,23 @@ export const SavingsAndDebtView: React.FC<SavingsAndDebtViewProps> = ({
     recordDebtPayment,
     settings,
   } = useExpense();
+  const { openModal } = useModal();
+
+  const handleAddSavings = () => {
+    if (onOpenAddSavings) {
+      onOpenAddSavings();
+    } else {
+      openModal('add_savings');
+    }
+  };
+
+  const handleAddDebt = () => {
+    if (onOpenAddDebt) {
+      onOpenAddDebt();
+    } else {
+      openModal('add_debt');
+    }
+  };
 
   const [activeContributeGoalId, setActiveContributeGoalId] = useState<string | null>(null);
   const [contributionAmount, setContributionAmount] = useState('');
@@ -29,22 +47,27 @@ export const SavingsAndDebtView: React.FC<SavingsAndDebtViewProps> = ({
   const [paymentAmount, setPaymentAmount] = useState('');
 
   const handleContribute = async (goalId: string) => {
-    if (!contributionAmount || Number(contributionAmount) <= 0) return;
+    const num = Number(contributionAmount);
+    if (!contributionAmount || num <= 0) return;
     await addSavingsContribution(goalId, {
-      amount: Number(contributionAmount),
+      amount: num,
+      type: 'deposit',
       date: getCurrentDateString(),
-      notes: 'Manual savings deposit',
+      note: 'Manual savings deposit',
     });
     setContributionAmount('');
     setActiveContributeGoalId(null);
   };
 
   const handleRecordPayment = async (debtId: string) => {
-    if (!paymentAmount || Number(paymentAmount) <= 0) return;
+    const num = Number(paymentAmount);
+    if (!paymentAmount || num <= 0) return;
     await recordDebtPayment(debtId, {
-      amount: Number(paymentAmount),
+      amount: num,
+      principalPaid: num,
+      interestPaid: 0,
       date: getCurrentDateString(),
-      notes: 'Monthly debt payment',
+      note: 'Monthly debt payment',
     });
     setPaymentAmount('');
     setActivePaymentDebtId(null);
@@ -64,8 +87,8 @@ export const SavingsAndDebtView: React.FC<SavingsAndDebtViewProps> = ({
           </div>
           <button
             type="button"
-            onClick={onOpenAddSavings}
-            className="px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5"
+            onClick={handleAddSavings}
+            className="px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New Goal</span>
@@ -168,8 +191,8 @@ export const SavingsAndDebtView: React.FC<SavingsAndDebtViewProps> = ({
           </div>
           <button
             type="button"
-            onClick={onOpenAddDebt}
-            className="px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5"
+            onClick={handleAddDebt}
+            className="px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Track Debt</span>

@@ -1,13 +1,14 @@
 import React from 'react';
 import { Menu, Bell, Database, Plus, RefreshCw } from 'lucide-react';
 import { useExpense } from '../context/ExpenseContext';
+import { useModal } from '../context/ModalContext';
 import { ThemeToggle } from './common/ThemeToggle';
 
 interface NavbarProps {
   onOpenSidebar: () => void;
-  onOpenAddTransaction: () => void;
-  onOpenNotifications: () => void;
-  onOpenSqliteManager: () => void;
+  onOpenAddTransaction?: () => void;
+  onOpenNotifications?: () => void;
+  onOpenSqliteManager?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -17,6 +18,31 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSqliteManager,
 }) => {
   const { unreadAlertCount, refreshFromDb, isLoading } = useExpense();
+  const { openModal } = useModal();
+
+  const handleAddTransaction = () => {
+    if (onOpenAddTransaction) {
+      onOpenAddTransaction();
+    } else {
+      openModal('add_transaction');
+    }
+  };
+
+  const handleNotifications = () => {
+    if (onOpenNotifications) {
+      onOpenNotifications();
+    } else {
+      openModal('notifications');
+    }
+  };
+
+  const handleSqliteManager = () => {
+    if (onOpenSqliteManager) {
+      onOpenSqliteManager();
+    } else {
+      openModal('sqlite_manager');
+    }
+  };
 
   return (
     <header className="h-16 bg-[#111114] border-b border-[#27272a] px-4 md:px-6 flex items-center justify-between sticky top-0 z-30">
@@ -59,8 +85,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <button
           type="button"
-          onClick={onOpenSqliteManager}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-lg transition-colors"
+          onClick={handleSqliteManager}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-lg transition-colors cursor-pointer"
         >
           <Database className="w-3.5 h-3.5 text-[#c1ff72]" />
           <span>SQLite DB</span>
@@ -68,8 +94,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <button
           type="button"
-          onClick={onOpenNotifications}
-          className="relative p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+          onClick={handleNotifications}
+          className="relative p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
           title="Notifications & Alerts"
         >
           <Bell className="w-4 h-4" />
@@ -80,8 +106,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <button
           type="button"
-          onClick={onOpenAddTransaction}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all shadow-sm active:scale-95"
+          onClick={handleAddTransaction}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span className="hidden xs:inline">Add Transaction</span>

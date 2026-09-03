@@ -11,7 +11,9 @@ Designed for precise daily financial control, this application goes beyond conve
 - **Prorated Daily Limit Budgeting**: Automatically calculates daily spending allowances for dynamic expense categories (e.g., dining, groceries, entertainment) across the exact days in any month, tracking cumulative pacing, pace alerts, and rollover surpluses.
 - **Durable SQLite Storage (Zero Mock)**: Complete relational database engine running via SQLite WASM (`sql.js`) with atomic file writes to `data/budget.sqlite`. No volatile in-memory loss on server reboot.
 - **Trash Bin & Soft Deletes**: Transactions are protected with a two-stage deletion lifecycle—deleted items move to the Trash Bin where they can be inspected and restored or permanently purged.
-- **Recurring Engine**: Automated scheduling for recurring monthly bills, subscriptions, and paychecks with one-click bulk application and tracking.
+- **Automated Month-Start Recurring Engine**: Scheduled recurring monthly bills, subscriptions, and paychecks are automatically cloned into the live database at the start of each month, with per-item enable/disable controls, deduplication guards, and live execution status.
+- **Hash-Based Bookmarkable Routing**: Full browser history integration supporting direct URLs (`/#/dashboard`, `/#/transactions`, `/#/prorated`, `/#/budgets`, `/#/savings-debt`, `/#/reports`, `/#/categories`, `/#/trash`) with back/forward navigation and refresh persistence.
+- **Resilient UI Architecture**: Built-in animated layout loading skeletons during SQLite hydration, global React Error Boundary with recovery triggers, and centralized modal management.
 - **Savings Goals & Debt Paydown**: Visual progress bars, target date timelines, deposit/withdrawal histories for savings, and principal/interest amortization tracking for debts.
 - **Export & Reporting**: Multi-format reporting engine offering CSV exports (itemized transactions, category breakdowns, daily pace metrics) and browser-based printable/PDF financial statements.
 - **Security-Hardened Docker Packaging**: Production multi-stage Alpine Dockerfile adhering to least-privilege principles (unprivileged `node` user, `0700` data directory permissions, `tini` PID 1 process management, `--ignore-scripts`, and container healthchecks).
@@ -104,9 +106,12 @@ $$\text{Cumulative Expected Spend} = \text{Daily Allowance} \times D$$
 - Filter and search transactions by date range, category, payment method, or title keywords.
 - Deleted transactions are placed in `/api/deleted-transactions`. Users can restore accidentally deleted records at any time.
 
-### 3. Recurring Bills & Income
-- Configure fixed subscriptions, utilities, and paychecks with custom days of the month.
-- Auto-apply recurring entries into the live transaction registry on the scheduled date with deduplication.
+### 3. Automated Recurring Bills & Subscriptions
+- Configure recurring expenses and incomes with custom amounts, categories, and payment days.
+- **Automated Month-Start Service**: Automatically clones enabled recurring entries into the live SQLite database at the beginning of each month upon initial load, calendar transition, or browser refocus.
+- **Granular Item Controls**: Toggle auto-cloning on/off per individual subscription or bill without deleting the template.
+- **Deduplication Safeguards**: Tracks `lastAppliedMonth` to guarantee records are never duplicated within the same billing period.
+- **Manual Overrides**: Execute on-demand auto-clone checks or apply all active items with one click.
 
 ### 4. Savings Goals & Debt Paydown
 - Track savings targets with target dates, visual progress bars, and full deposit/withdrawal logs.
@@ -136,8 +141,10 @@ $$\text{Cumulative Expected Spend} = \text{Daily Allowance} \times D$$
 | `POST` | `/api/prorated-rules` | Create a prorated budget tracking rule |
 | `GET` | `/api/savings-goals` | List all savings goals and deposit histories |
 | `GET` | `/api/debts` | List all debts and payment histories |
-| `GET` | `/api/recurring` | List all recurring templates |
-| `POST` | `/api/recurring/apply` | Apply pending recurring entries for a specified month |
+| `GET` | `/api/recurring` | List all recurring templates with `autoApply` flags |
+| `POST` | `/api/recurring` | Create recurring template (`autoApply`, `dayOfMonth`) |
+| `PUT` | `/api/recurring/:id` | Update recurring item or toggle `autoApply` status |
+| `POST` | `/api/recurring/apply` | Clone pending recurring items (`month`, `forceAll`) into transactions |
 | `GET` | `/api/settings` | Retrieve user preferences and alert thresholds |
 
 *For complete endpoint schemas, query parameters, and payloads, refer to the [API Reference](./docs/api-reference.md).*
