@@ -6,6 +6,7 @@ export { BudgetsAndRecurringView } from '../components/views/BudgetsAndRecurring
 export { SavingsAndDebtView } from '../components/views/SavingsAndDebtView';
 export { CategorySettingsView } from '../components/views/CategorySettingsView';
 export { MonthlyReportView } from '../components/views/MonthlyReportView';
+export { TrashView } from '../components/views/TrashView';
 
 export { AddTransactionModal } from '../components/modals/AddTransactionModal';
 export { LogProratedSpendModal } from '../components/modals/LogProratedSpendModal';

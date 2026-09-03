@@ -32,8 +32,12 @@ A unique budgeting method that transforms coarse monthly budget limits into acti
 - **Streamlined Prorated Quick-Spend Logger (`LogProratedSpendModal.tsx`)**:
   - Dedicated lightweight spend logger pre-filled with the selected tracker's name, category, and date.
   - Eliminates the need to navigate through the complex general expense modal for daily prorated spend.
-- **1-Click Prorated Tracker Switcher**:
+- **1-Click Prorated Tracker Switcher & URL Slugs**:
+  - Direct URL Slugs (`/#/dashboard`, `/#/prorated`, `/#/transactions`, `/#/reports`, `/#/budgets`, `/#/savings-debt`, `/#/categories`, `/#/trash`) for direct bookmarking and browser navigation.
   - Switch between trackers (*Snacks & Treats*, *Travel*, *Food*, etc.) with a single click using the **Sidebar Tracker Menu** or the top **Pill Tab Bar**.
+- **Trash Bin & 1-Click Soft Delete Recovery (`/#/trash`)**:
+  - Soft-deletes transactions to `deleted_transactions` SQLite table.
+  - **Trash View**: Lists deleted records with 1-click **Restore Record** and **Empty Trash**.
 - **Manual Expense Connection & Unlinked Items**:
   - **In-Form Connection**: Select a Prorated Tracker directly from `AddTransactionModal` to automatically link any new or edited transaction.
   - **On-Page Unlinked Items Card**: Visual card on `ProratedBudgetView` listing all unlinked month transactions with 1-click `+ Link to [Tracker]` buttons.

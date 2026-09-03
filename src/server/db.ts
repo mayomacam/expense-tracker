@@ -105,6 +105,22 @@ function createSchema() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS deleted_transactions (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      amount REAL NOT NULL,
+      type TEXT NOT NULL,
+      category TEXT NOT NULL,
+      date TEXT NOT NULL,
+      tags TEXT DEFAULT '[]',
+      notes TEXT,
+      paymentMethod TEXT NOT NULL,
+      isRecurring INTEGER DEFAULT 0,
+      recurringFrequency TEXT,
+      receiptUrl TEXT,
+      deleted_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS prorated_rules (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -425,6 +441,27 @@ export const transactionRepo = {
     return merged;
   },
   delete(id: string): boolean {
+    const existing = this.getById(id);
+    if (existing) {
+      run(
+        `INSERT INTO deleted_transactions (id, title, amount, type, category, date, tags, notes, paymentMethod, isRecurring, recurringFrequency, receiptUrl)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          existing.id,
+          existing.title,
+          existing.amount,
+          existing.type,
+          existing.category,
+          existing.date,
+          JSON.stringify(existing.tags || []),
+          existing.notes || null,
+          existing.paymentMethod,
+          existing.isRecurring ? 1 : 0,
+          existing.recurringFrequency || null,
+          existing.receiptUrl || null,
+        ]
+      );
+    }
     run('DELETE FROM transactions WHERE id = ?', [id]);
     return true;
   },
@@ -433,6 +470,37 @@ export const transactionRepo = {
       this.create(tx);
     }
     return txs;
+  },
+};
+
+// --- DELETED TRANSACTIONS (TRASH BIN) ---
+export const deletedTransactionRepo = {
+  getAll(): Transaction[] {
+    const rows = query<any>('SELECT * FROM deleted_transactions ORDER BY deleted_at DESC');
+    return rows.map((r) => ({
+      ...r,
+      amount: Number(r.amount),
+      tags: JSON.parse(r.tags || '[]'),
+      isRecurring: Boolean(r.isRecurring),
+    }));
+  },
+  restore(id: string): Transaction | null {
+    const rows = query<any>('SELECT * FROM deleted_transactions WHERE id = ?', [id]);
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    const restoredTx: Transaction = {
+      ...r,
+      amount: Number(r.amount),
+      tags: JSON.parse(r.tags || '[]'),
+      isRecurring: Boolean(r.isRecurring),
+    };
+    run('DELETE FROM deleted_transactions WHERE id = ?', [id]);
+    transactionRepo.create(restoredTx);
+    return restoredTx;
+  },
+  emptyTrash(): boolean {
+    run('DELETE FROM deleted_transactions');
+    return true;
   },
 };
 

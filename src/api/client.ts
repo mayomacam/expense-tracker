@@ -61,6 +61,11 @@ export const api = {
     request<Transaction>(`/api/transactions/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
   deleteTransaction: (id: string) =>
     request<{ success: boolean; id: string }>(`/api/transactions/${id}`, { method: 'DELETE' }),
+  getDeletedTransactions: () => request<Transaction[]>('/api/deleted-transactions'),
+  restoreTransaction: (id: string) =>
+    request<{ success: boolean; restored: Transaction }>(`/api/deleted-transactions/${id}/restore`, { method: 'POST' }),
+  emptyTrash: () =>
+    request<{ success: boolean; message: string }>('/api/deleted-transactions', { method: 'DELETE' }),
   importTransactions: (transactions: Transaction[]) =>
     request<{ success: boolean; count: number; transactions: Transaction[] }>('/api/transactions/import', {
       method: 'POST',

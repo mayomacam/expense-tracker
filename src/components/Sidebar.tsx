@@ -399,7 +399,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* TAB: TRANSACTIONS & REPORTS - Shows Quick Actions & Export */}
-      {(activeTab === 'transactions' || activeTab === 'reports') && (
+      {(activeTab === 'transactions' || activeTab === 'reports' || activeTab === 'trash') && (
         <div className="space-y-3 pt-2 border-t border-white/[0.08]">
           <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
             Ledger Quick Actions
@@ -411,6 +411,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Plus className="w-4 h-4 text-black stroke-[3]" />
             <span>Log Transaction</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigateTab('trash')}
+            className="w-full py-2 bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors uppercase"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-[#ff5f5f]" />
+            <span>View Trash Bin & Restore</span>
           </button>
         </div>
       )}

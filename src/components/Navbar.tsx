@@ -83,6 +83,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'budgets', label: 'Budgets & Recurring', icon: Repeat },
     { id: 'savings_debt', label: 'Savings & Debt', icon: Target },
     { id: 'settings', label: 'Categories', icon: Settings },
+    { id: 'trash', label: 'Trash Bin', icon: Database },
   ];
 
   return (

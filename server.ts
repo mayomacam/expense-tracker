@@ -4,6 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import {
   initDatabase,
   transactionRepo,
+  deletedTransactionRepo,
   categoryRepo,
   proratedRuleRepo,
   savingsRepo,
@@ -139,6 +140,35 @@ async function startServer() {
     try {
       transactionRepo.delete(req.params.id);
       res.json({ success: true, id: req.params.id });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- Deleted Transactions (Trash Bin) ---
+  app.get('/api/deleted-transactions', (req, res) => {
+    try {
+      const deleted = deletedTransactionRepo.getAll();
+      res.json(deleted);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/deleted-transactions/:id/restore', (req, res) => {
+    try {
+      const restored = deletedTransactionRepo.restore(req.params.id);
+      if (!restored) return res.status(404).json({ error: 'Deleted transaction not found' });
+      res.json({ success: true, restored });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/deleted-transactions', (req, res) => {
+    try {
+      deletedTransactionRepo.emptyTrash();
+      res.json({ success: true, message: 'Trash bin emptied clean.' });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

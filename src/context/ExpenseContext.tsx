@@ -34,9 +34,13 @@ interface ExpenseContextType {
   refreshFromDb: () => Promise<void>;
 
   // Transaction Actions (SQLite CRUD)
+  transactions: Transaction[];
+  deletedTransactions: Transaction[];
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<Transaction>;
   updateTransaction: (id: string, tx: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  restoreTransaction: (id: string) => Promise<void>;
+  emptyTrash: () => Promise<void>;
   importTransactions: (txs: Transaction[]) => Promise<void>;
 
   // Category Actions (SQLite CRUD)
@@ -103,12 +107,15 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [isDbSyncing, setIsDbSyncing] = useState<boolean>(true);
   const [dbStatus, setDbStatus] = useState<'connected' | 'syncing' | 'offline'>('syncing');
 
+  const [deletedTransactions, setDeletedTransactions] = useState<Transaction[]>([]);
+
   // Load all data from SQLite database on initial render
   const refreshFromDb = useCallback(async () => {
     setIsDbSyncing(true);
     try {
       const [
         txData,
+        deletedData,
         catData,
         rulesData,
         savingsData,
@@ -119,6 +126,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
         statsData,
       ] = await Promise.all([
         api.getTransactions().catch(() => seed.transactions),
+        api.getDeletedTransactions().catch(() => []),
         api.getCategories().catch(() => seed.categories),
         api.getProratedRules().catch(() => seed.proratedRules),
         api.getSavingsGoals().catch(() => seed.savingsGoals),
@@ -130,6 +138,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
       ]);
 
       setTransactions(txData);
+      setDeletedTransactions(deletedData);
       setCategories(catData);
       setProratedRules(rulesData);
       setSavingsGoals(savingsData);
@@ -143,7 +152,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
       setDbStats(statsData);
       setDbStatus('connected');
     } catch (err) {
-      console.warn('Could not sync with SQLite API, continuing with local state:', err);
+      console.error('Error syncing with SQLite database:', err);
       setDbStatus('offline');
     } finally {
       setIsDbSyncing(false);
@@ -253,12 +262,40 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const deleteTransaction = async (id: string) => {
+    const target = transactions.find((t) => t.id === id);
+    if (target) {
+      setDeletedTransactions((prev) => [target, ...prev]);
+    }
     setTransactions((prev) => prev.filter((t) => t.id !== id));
     try {
       await api.deleteTransaction(id);
       api.getDbStats().then(setDbStats).catch(() => {});
     } catch (e) {
       console.error('Error deleting transaction from SQLite:', e);
+    }
+  };
+
+  const restoreTransaction = async (id: string) => {
+    const target = deletedTransactions.find((t) => t.id === id);
+    if (target) {
+      setTransactions((prev) => [target, ...prev]);
+      setDeletedTransactions((prev) => prev.filter((t) => t.id !== id));
+    }
+    try {
+      await api.restoreTransaction(id);
+      api.getDbStats().then(setDbStats).catch(() => {});
+    } catch (e) {
+      console.error('Error restoring transaction from SQLite:', e);
+    }
+  };
+
+  const emptyTrash = async () => {
+    setDeletedTransactions([]);
+    try {
+      await api.emptyTrash();
+      api.getDbStats().then(setDbStats).catch(() => {});
+    } catch (e) {
+      console.error('Error emptying trash in SQLite:', e);
     }
   };
 
@@ -648,6 +685,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     <ExpenseContext.Provider
       value={{
         transactions,
+        deletedTransactions,
         categories,
         proratedRules,
         savingsGoals,
@@ -665,6 +703,8 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
         addTransaction,
         updateTransaction,
         deleteTransaction,
+        restoreTransaction,
+        emptyTrash,
         importTransactions,
         addCategory,
         updateCategory,

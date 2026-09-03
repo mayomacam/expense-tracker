@@ -8,6 +8,7 @@ import { MonthlyReportView } from './components/views/MonthlyReportView';
 import { BudgetsAndRecurringView } from './components/views/BudgetsAndRecurringView';
 import { SavingsAndDebtView } from './components/views/SavingsAndDebtView';
 import { CategorySettingsView } from './components/views/CategorySettingsView';
+import { TrashView } from './components/views/TrashView';
 
 // Modals & Sidebar
 import { AddTransactionModal } from './components/modals/AddTransactionModal';
@@ -31,9 +32,51 @@ import {
 } from './types';
 import { Plus, Calculator } from 'lucide-react';
 
+const TAB_SLUG_MAP: Record<string, string> = {
+  dashboard: 'dashboard',
+  prorated: 'prorated',
+  transactions: 'transactions',
+  reports: 'reports',
+  budgets: 'budgets',
+  savings_debt: 'savings-debt',
+  settings: 'categories',
+  trash: 'trash',
+};
+
+const SLUG_TAB_MAP: Record<string, string> = {
+  dashboard: 'dashboard',
+  prorated: 'prorated',
+  transactions: 'transactions',
+  reports: 'reports',
+  budgets: 'budgets',
+  'savings-debt': 'savings_debt',
+  categories: 'settings',
+  trash: 'trash',
+};
+
+function getTabFromHash(): string {
+  const hash = window.location.hash.replace(/^#\/?/, '').trim();
+  return SLUG_TAB_MAP[hash] || 'dashboard';
+}
+
 const MainApp: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTabState] = useState<string>(() => getTabFromHash());
   const [selectedProratedRuleId, setSelectedProratedRuleId] = useState<string>('');
+
+  const handleTabChange = (newTab: string) => {
+    setActiveTabState(newTab);
+    const slug = TAB_SLUG_MAP[newTab] || 'dashboard';
+    window.location.hash = `#/${slug}`;
+  };
+
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      const tab = getTabFromHash();
+      setActiveTabState(tab);
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Modal & Sidebar States
   const [isAddTxOpen, setIsAddTxOpen] = useState(false);
@@ -122,7 +165,7 @@ const MainApp: React.FC = () => {
       {/* Navigation Top Bar */}
       <Navbar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         onOpenAddTransaction={() => handleOpenAddTransaction()}
         onOpenExport={() => setIsExportModalOpen(true)}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
@@ -137,7 +180,7 @@ const MainApp: React.FC = () => {
           {activeTab === 'dashboard' && (
             <DashboardView
               onOpenAddTransaction={() => handleOpenAddTransaction()}
-              onNavigateTab={setActiveTab}
+              onNavigateTab={handleTabChange}
               onOpenAddProrated={handleOpenAddProrated}
             />
           )}
@@ -188,6 +231,10 @@ const MainApp: React.FC = () => {
               onEditCategory={handleEditCategory}
             />
           )}
+
+          {activeTab === 'trash' && (
+            <TrashView onNavigateTab={handleTabChange} />
+          )}
         </main>
 
         {/* Persistent Desktop Sidebar (Visible by default, toggled via SIDEBAR button!) */}
@@ -200,7 +247,7 @@ const MainApp: React.FC = () => {
               onOpenAddTransaction={handleOpenAddTransaction}
               onOpenAddProratedModal={handleOpenAddProrated}
               onEditProratedRule={handleEditProrated}
-              onNavigateTab={setActiveTab}
+              onNavigateTab={handleTabChange}
             />
           </aside>
         )}
