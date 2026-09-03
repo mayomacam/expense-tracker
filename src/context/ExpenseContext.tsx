@@ -83,8 +83,8 @@ interface ExpenseContextType {
   clearReadAlerts: () => Promise<void>;
 
   // Database actions
-  resetToZero: () => Promise<void>;
-  resetAllDataToZero: () => Promise<void>;
+  resetToZero: (password?: string) => Promise<void>;
+  resetAllDataToZero: (password?: string) => Promise<void>;
   loadDemoData: () => Promise<void>;
 }
 
@@ -520,13 +520,13 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setReadAlertIds([]);
   };
 
-  const resetToZero = async () => {
-    await api.resetToZero();
+  const resetToZero = async (password?: string) => {
+    await api.resetToZero(password);
     await refreshFromDb();
   };
 
-  const resetAllDataToZero = async () => {
-    await api.resetToZero();
+  const resetAllDataToZero = async (password?: string) => {
+    await api.resetToZero(password);
     await refreshFromDb();
   };
 

@@ -30,13 +30,26 @@ The Expense & Prorated Budget Tracker exposes a standard RESTful HTTP API on por
   ```
 
 ### 1.2 Reset Database to Clean Zero State
-- **Method**: `POST /api/db/reset` (or `POST /api/db/reset-to-zero`)
-- **Description**: Wipes all transactions, debts, goals, and rules, leaving only default system categories and clean user preferences.
-- **Response**: `200 OK`
+- **Method**: `POST /api/db/reset-to-zero`
+- **Description**: Security-protected endpoint that wipes all transactions, debts, goals, and rules, leaving only default system categories and clean zero records. Requires a valid admin password.
+- **Request Body**:
+  ```json
+  {
+    "password": "admin123"
+  }
+  ```
+- **Environment Variable**: `RESET_PASSWORD` (defaults to `admin123` if unset)
+- **Response (200 OK)**:
   ```json
   {
     "success": true,
-    "message": "Database reset to clean zero records in SQLite."
+    "message": "Database wiped clean: all fake data reset to zero."
+  }
+  ```
+- **Response (401 Unauthorized)**:
+  ```json
+  {
+    "error": "Unauthorized: Invalid or missing reset password."
   }
   ```
 

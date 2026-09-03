@@ -14,9 +14,14 @@ export const SqliteManagerModal: React.FC<SqliteManagerModalProps> = ({ isOpen, 
   if (!isOpen) return null;
 
   const handleResetToZero = async () => {
-    if (!window.confirm('Reset database to clean zero records? This wipes all sample data.')) return;
+    const password = window.prompt('🔒 Security Verification\n\nEnter reset password to wipe database to zero:');
+    if (password === null) return;
+    if (!password.trim()) {
+      alert('Password is required to reset database.');
+      return;
+    }
     try {
-      await resetToZero();
+      await resetToZero(password);
       setActionMessage('Database wiped clean to zero records.');
       setTimeout(() => setActionMessage(null), 4000);
     } catch (err: any) {

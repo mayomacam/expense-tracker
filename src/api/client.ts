@@ -24,7 +24,12 @@ export const api = {
   // Database status and reset
   getDbStatus: () => fetch('/api/db/status').then(handleResponse<{ success: boolean; engine: string; databaseFile: string; fileSizeKb: number; tables: Record<string, number>; status: string; lastSync: string }>),
   resetDatabase: () => fetch('/api/db/reset', { method: 'POST' }).then(handleResponse<{ success: boolean; message: string }>),
-  resetToZero: () => fetch('/api/db/reset-to-zero', { method: 'POST' }).then(handleResponse<{ success: boolean; message: string }>),
+  resetToZero: (password?: string) =>
+    fetch('/api/db/reset-to-zero', {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify({ password }),
+    }).then(handleResponse<{ success: boolean; message: string }>),
   loadDemoData: () => fetch('/api/db/load-demo', { method: 'POST' }).then(handleResponse<{ success: boolean; message: string }>),
 
   // Transactions

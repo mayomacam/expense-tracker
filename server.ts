@@ -49,6 +49,11 @@ async function startServer() {
 
   app.post('/api/db/reset-to-zero', (req, res) => {
     try {
+      const { password } = req.body || {};
+      const expectedPassword = process.env.RESET_PASSWORD || 'admin123';
+      if (!password || password !== expectedPassword) {
+        return res.status(401).json({ error: 'Unauthorized: Invalid or missing reset password.' });
+      }
       resetAllDataToZero();
       res.json({ success: true, message: 'Database wiped clean: all fake data reset to zero.' });
     } catch (err: any) {
