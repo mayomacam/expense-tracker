@@ -39,6 +39,7 @@ const MainApp: React.FC = () => {
   const [isAddTxOpen, setIsAddTxOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [defaultCategoryForTx, setDefaultCategoryForTx] = useState<string | undefined>(undefined);
+  const [defaultDateForTx, setDefaultDateForTx] = useState<string | undefined>(undefined);
 
   const [isProratedModalOpen, setIsProratedModalOpen] = useState(false);
   const [editingProratedRule, setEditingProratedRule] = useState<ProratedBudgetRule | null>(null);
@@ -58,15 +59,17 @@ const MainApp: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Handlers
-  const handleOpenAddTransaction = (defaultCategoryId?: string) => {
+  const handleOpenAddTransaction = (defaultCategoryId?: string, defaultDate?: string) => {
     setEditingTransaction(null);
     setDefaultCategoryForTx(defaultCategoryId);
+    setDefaultDateForTx(defaultDate);
     setIsAddTxOpen(true);
   };
 
   const handleEditTransaction = (tx: Transaction) => {
     setEditingTransaction(tx);
     setDefaultCategoryForTx(undefined);
+    setDefaultDateForTx(undefined);
     setIsAddTxOpen(true);
   };
 
@@ -146,6 +149,7 @@ const MainApp: React.FC = () => {
               onOpenAddTransaction={handleOpenAddTransaction}
               onOpenAddProratedModal={handleOpenAddProrated}
               onEditProratedRule={handleEditProrated}
+              onOpenAddCategory={handleOpenAddCategory}
             />
           )}
 
@@ -228,9 +232,11 @@ const MainApp: React.FC = () => {
         onClose={() => {
           setIsAddTxOpen(false);
           setEditingTransaction(null);
+          setDefaultDateForTx(undefined);
         }}
         initialTransaction={editingTransaction}
         defaultCategoryId={defaultCategoryForTx}
+        defaultDate={defaultDateForTx}
       />
 
       <AddProratedBudgetModal

@@ -30,6 +30,24 @@ function persistDb() {
   }
 }
 
+function query<T = any>(sql: string, params: any[] = []): T[] {
+  if (!db) return [];
+  const stmt = db.prepare(sql);
+  stmt.bind(params);
+  const results: T[] = [];
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as T);
+  }
+  stmt.free();
+  return results;
+}
+
+function run(sql: string, params: any[] = []) {
+  if (!db) return;
+  db.run(sql, params);
+  persistDb();
+}
+
 export async function initDatabase() {
   if (db) return db;
 
@@ -127,6 +145,150 @@ function createSchema() {
       name TEXT NOT NULL,
       lenderName TEXT,
       debtType TEXT DEFAULT 'borrowed',
+      totalPrincipal REAL NOT NULL,
+      remainingBalance REAL NOT NULL,
+      interestRate REAL DEFAULT 0,
+      minimumPayment REAL DEFAULT 0,
+      dueDay INTEGER DEFAULT 1,
+      notes TEXT,
+      color TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS debt_payments (
+      id TEXT PRIMARY KEY,
+      debtId TEXT NOT NULL,
+      date TEXT NOT NULL,
+      amount REAL NOT NULL,
+      principalPaid REAL NOT NULL,
+      interestPaid REAL DEFAULT 0,
+      note TEXT,
+      FOREIGN KEY(debtId) REFERENCES debts(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS recurring_items (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      amount REAL NOT NULL,
+      type TEXT NOT NULL,
+      category TEXT NOT NULL,
+      frequency TEXT NOT NULL,
+      dayOfMonth INTEGER DEFAULT 1,
+      autoApply INTEGER DEFAULT 1,
+      tags TEXT DEFAULT '[]',
+      paymentMethod TEXT NOT NULL,
+      lastAppliedMonth TEXT,
+      isActive INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS user_settings (
+      id TEXT PRIMARY KEY,
+      currency TEXT DEFAULT '₹',
+      currencyCode TEXT DEFAULT 'INR',
+      pushNotificationsEnabled INTEGER DEFAULT 1,
+      dailyBudgetAlertThreshold REAL DEFAULT 100,
+      monthlyBudgetWarningThreshold REAL DEFAULT 80,
+      enableRolloverByDefault INTEGER DEFAULT 1,
+      selectedMonth TEXT NOT NULL,
+      userName TEXT DEFAULT 'User'
+    );
+  `);
+}
+
+function seedIfEmpty() {
+  if (!db) return;
+  const rows = query<any>('SELECT COUNT(*) as count FROM transactions');
+  if (rows[0] && rows[0].count > 0) return;
+
+  console.log('🌱 Database is empty. Seeding initial demo data...');
+
+  // Categories
+  for (const cat of demo.categories) {
+    run(
+      `INSERT INTO categories (id, name, icon, color, monthlyBudget, isCustom) VALUES (?, ?, ?, ?, ?, ?)`,
+      [cat.id, cat.name, cat.icon, cat.color, cat.monthlyBudget || 0, cat.isCustom ? 1 : 0]
+    );
+  }
+
+  // Transactions
+  for (const tx of demo.transactions) {
+    run(
+      `INSERT INTO transactions (id, title, amount, type, category, date, tags, notes, paymentMethod, isRecurring, recurringFrequency, receiptUrl)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        tx.id,
+        tx.title,
+        tx.amount,
+        tx.type,
+        tx.category,
+        tx.date,
+        JSON.stringify(tx.tags || []),
+        tx.notes || null,
+        tx.paymentMethod,
+        tx.isRecurring ? 1 : 0,
+        tx.recurringFrequency || null,
+        tx.receiptUrl || null,
+      ]
+    );
+  }
+
+  // Prorated Rules
+  for (const rule of demo.proratedRules) {
+    run(
+      `INSERT INTO prorated_rules (id, name, categoryId, targetTags, monthlyMaxSpend, month, rolloverEnabled, rolloverAmount, alertThresholdPercent, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        rule.id,
+        rule.name,
+        rule.categoryId || null,
+        JSON.stringify(rule.targetTags || []),
+        rule.monthlyMaxSpend,
+        rule.month,
+        rule.rolloverEnabled ? 1 : 0,
+        rule.rolloverAmount || 0,
+        rule.alertThresholdPercent || 100,
+        rule.notes || null,
+      ]
+    );
+  }
+
+  // Savings Goals
+  for (const goal of demo.savingsGoals) {
+    run(
+      `INSERT INTO savings_goals (id, name, targetAmount, currentAmount, targetDate, icon, color, category, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        goal.id,
+        goal.name,
+        goal.targetAmount,
+        goal.currentAmount,
+        goal.targetDate,
+        goal.icon || null,
+        goal.color || null,
+        goal.category || null,
+        goal.notes || null,
+      ]
+    );
+
+    if (goal.history && goal.history.length > 0) {
+      for (const h of goal.history) {
+        run(
+          `INSERT INTO savings_history (id, goalId, date, amount, note, type) VALUES (?, ?, ?, ?, ?, ?)`,
+          [h.id, goal.id, h.date, h.amount, h.note || null, h.type]
+        );
+      }
+    }
+  }
+
+  // Debts
+  for (const debt of demo.debts) {
+    run(
+      `INSERT INTO debts (id, name, lenderName, debtType, totalPrincipal, remainingBalance, interestRate, minimumPayment, dueDay, notes, color)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        debt.id,
+        debt.name,
+        debt.lenderName || null,
+        debt.debtType || 'borrowed',
         debt.totalPrincipal,
         debt.remainingBalance,
         debt.interestRate,
@@ -520,6 +682,8 @@ export const savingsRepo = {
 };
 
 // --- DEBTS ---
+type NewDebtInput = Omit<DebtItem, 'remainingBalance' | 'payments'> & { remainingBalance?: number; payments?: any[] };
+
 export const debtRepo = {
   getAll(): DebtItem[] {
     const debts = query<any>('SELECT * FROM debts ORDER BY dueDay ASC');
@@ -542,20 +706,32 @@ export const debtRepo = {
         name: d.name,
         lenderName: d.lenderName || undefined,
         debtType: (d.debtType as 'borrowed' | 'lent') || 'borrowed',
-      totalPrincipal: Number(d.totalPrincipal),
-      remainingBalance: Number(d.remainingBalance),
-      interestRate: Number(d.interestRate),
-      minimumPayment: Number(d.minimumPayment),
-      dueDay: Number(d.dueDay),
-      notes: d.notes || undefined,
-      color: d.color || undefined,
-      payments,
-    };
+        totalPrincipal: Number(d.totalPrincipal),
+        remainingBalance: Number(d.remainingBalance),
+        interestRate: Number(d.interestRate),
+        minimumPayment: Number(d.minimumPayment),
+        dueDay: Number(d.dueDay),
+        notes: d.notes || undefined,
+        color: d.color || undefined,
+        payments,
+      };
+    });
   },
-  create(debt: Omit<DebtItem, 'remainingBalance' | 'payments'> & { remainingBalance?: number; payments?: any[] }): DebtItem {
+  create(debt: NewDebtInput): DebtItem {
     const fullDebt: DebtItem = {
       ...debt,
       debtType: debt.debtType || 'borrowed',
+      remainingBalance: debt.remainingBalance ?? debt.totalPrincipal,
+      payments: debt.payments || [],
+    };
+    run(
+      `INSERT INTO debts (id, name, lenderName, debtType, totalPrincipal, remainingBalance, interestRate, minimumPayment, dueDay, notes, color)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        fullDebt.id,
+        fullDebt.name,
+        fullDebt.lenderName || null,
+        fullDebt.debtType,
         fullDebt.totalPrincipal,
         fullDebt.remainingBalance,
         fullDebt.interestRate,
@@ -579,11 +755,8 @@ export const debtRepo = {
        WHERE id = ?`,
       [
         merged.name,
-<<<<<<< HEAD
         merged.lenderName || null,
         merged.debtType || 'borrowed',
-=======
->>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
         merged.totalPrincipal,
         merged.remainingBalance,
         merged.interestRate,

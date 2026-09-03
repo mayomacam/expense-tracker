@@ -20,6 +20,17 @@ export const AddDebtModal: React.FC<AddDebtModalProps> = ({
   const [name, setName] = useState('');
   const [lenderName, setLenderName] = useState('');
   const [debtType, setDebtType] = useState<'borrowed' | 'lent'>('borrowed');
+  const [totalPrincipal, setTotalPrincipal] = useState('');
+  const [interestRate, setInterestRate] = useState('');
+  const [minimumPayment, setMinimumPayment] = useState('');
+  const [dueDay, setDueDay] = useState('1');
+  const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    if (editingDebt) {
+      setName(editingDebt.name);
+      setLenderName(editingDebt.lenderName || '');
+      setDebtType(editingDebt.debtType || 'borrowed');
       setTotalPrincipal(editingDebt.totalPrincipal.toString());
       setInterestRate(editingDebt.interestRate.toString());
       setMinimumPayment(editingDebt.minimumPayment.toString());
@@ -29,6 +40,30 @@ export const AddDebtModal: React.FC<AddDebtModalProps> = ({
       setName('');
       setLenderName('');
       setDebtType('borrowed');
+      setTotalPrincipal('');
+      setInterestRate('');
+      setMinimumPayment('');
+      setDueDay('1');
+      setNotes('');
+    }
+  }, [editingDebt, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const numPrincipal = parseFloat(totalPrincipal);
+    if (!name.trim() || isNaN(numPrincipal) || numPrincipal <= 0) return;
+
+    const numInterest = parseFloat(interestRate) || 0;
+    const numMinPay = parseFloat(minimumPayment) || 0;
+    const numDueDay = parseInt(dueDay, 10) || 1;
+
+    if (editingDebt) {
+      updateDebt(editingDebt.id, {
+        name: name.trim(),
+        lenderName: lenderName.trim() || undefined,
+        debtType,
         totalPrincipal: numPrincipal,
         interestRate: numInterest,
         minimumPayment: numMinPay,
@@ -40,6 +75,34 @@ export const AddDebtModal: React.FC<AddDebtModalProps> = ({
         name: name.trim(),
         lenderName: lenderName.trim() || undefined,
         debtType,
+        totalPrincipal: numPrincipal,
+        remainingBalance: numPrincipal,
+        interestRate: numInterest,
+        minimumPayment: numMinPay,
+        dueDay: numDueDay,
+        notes: notes.trim() || undefined,
+      });
+    }
+
+    onClose();
+  };
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 font-sans"
+        >
+          <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-rose-50 border border-rose-200/50 rounded-xl text-rose-600">
+                <Landmark className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                {editingDebt ? 'Edit Debt / Loan' : 'Add New Debt / Loan'}
               </h3>
             </div>
             <button

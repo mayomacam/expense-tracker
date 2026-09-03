@@ -33,13 +33,24 @@ import { ProratedBudgetRule, Transaction } from '../../types';
 import { calculateProratedDailyBreakdown } from '../../utils/budgetCalculations';
 import { formatCurrency, getMonthName } from '../../utils/formatters';
 import { CategoryIcon } from '../common/CategoryIcon';
+import { LogProratedSpendModal } from '../modals/LogProratedSpendModal';
 
 interface ProratedBudgetViewProps {
   selectedRuleId?: string;
   onSelectRuleId?: (id: string) => void;
+  onOpenAddTransaction: (defaultCategory?: string, defaultDate?: string) => void;
+  onOpenAddProratedModal: () => void;
+  onEditProratedRule: (rule: ProratedBudgetRule) => void;
+  onOpenAddCategory?: () => void;
+}
+
+export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({
+  selectedRuleId: externalSelectedRuleId,
+  onSelectRuleId,
   onOpenAddTransaction,
   onOpenAddProratedModal,
   onEditProratedRule,
+  onOpenAddCategory,
 }) => {
   const {
     proratedRules,
@@ -55,10 +66,70 @@ interface ProratedBudgetViewProps {
     proratedRules[0]?.id || ''
   );
   const [chartMode, setChartMode] = useState<'cumulative' | 'daily'>('daily');
+  const [quickLogModalOpen, setQuickLogModalOpen] = useState(false);
+  const [quickLogDate, setQuickLogDate] = useState<string | undefined>(undefined);
 
   const selectedRuleId = externalSelectedRuleId || internalSelectedRuleId;
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111114] p-5 rounded-2xl border border-white/[0.08] backdrop-blur-md">
+  const activeRule =
+    proratedRules.find((r) => r.id === selectedRuleId) || proratedRules[0] || null;
+
+  const breakdown = activeRule
+    ? calculateProratedDailyBreakdown(activeRule, transactions, selectedMonth)
+    : null;
+
+  const chartData = useMemo(() => {
+    if (!breakdown) return [];
+    return breakdown.dailyRecords.map((r) => ({
+      day: r.day,
+      date: r.date,
+      dayOfWeek: r.dayOfWeek,
+      dailySpend: r.amountSpent,
+      dailyLimit: r.dailyProratedLimit,
+      cumulativeSpend: r.cumulativeSpent,
+      cumulativeLimit: r.cumulativeProratedLimit,
+      isOver: r.isOverLimit,
+      delta: r.delta,
+    }));
+  }, [breakdown]);
+
+  if (!activeRule || !breakdown) {
+    return (
+      <div className="space-y-6 font-mono">
+        <div className="bg-[#111114] p-8 rounded-2xl border border-white/[0.08] text-center space-y-4">
+          <Calculator className="w-12 h-12 text-[#c1ff72] mx-auto" />
+          <h3 className="text-lg font-bold text-white">No Prorated Trackers Configured</h3>
+          <p className="text-xs text-zinc-400 max-w-md mx-auto">
+            Set up daily prorated budget caps to pace your spending.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={onOpenAddProratedModal}
+              className="px-5 py-2.5 bg-[#c1ff72] hover:bg-[#b0f05f] text-black font-extrabold rounded-xl text-xs inline-flex items-center gap-2 uppercase"
+            >
+              <Plus className="w-4 h-4 text-black stroke-[3]" />
+              <span>Create Prorated Tracker</span>
+            </button>
+            {onOpenAddCategory && (
+              <button
+                type="button"
+                onClick={onOpenAddCategory}
+                className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl text-xs inline-flex items-center gap-1.5 uppercase border border-white/10"
+              >
+                <Plus className="w-4 h-4 text-zinc-400" />
+                <span>New Category</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 font-mono">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#111114] p-5 rounded-2xl border border-white/[0.08] backdrop-blur-md">
         <div>
           <div className="flex items-center gap-2">
             <span className="tag text-[#c1ff72] border-[#c1ff72]/30 bg-[#c1ff72]/10">
@@ -80,12 +151,85 @@ interface ProratedBudgetViewProps {
           </p>
         </div>
 
-        {/* Note indicating controls moved to Sidebar */}
-        <div className="flex items-center gap-2 text-xs font-mono text-zinc-400 bg-white/[0.03] px-3.5 py-2 rounded-xl border border-white/10">
-          <span className="w-2 h-2 rounded-full bg-[#c1ff72] animate-pulse" />
-          <span>Tracker selector & Log Spend button in Sidebar 👉</span>
+        {/* Prorated Tracker Controls Header Bar & 1-Click Pill Switcher */}
+        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2.5">
+          {/* 1-Click Tracker Pill Switcher */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+            {proratedRules.map((rule) => {
+              const isSelected = activeRule.id === rule.id;
+              return (
+                <button
+                  key={rule.id}
+                  type="button"
+                  onClick={() => {
+                    setInternalSelectedRuleId(rule.id);
+                    if (onSelectRuleId) onSelectRuleId(rule.id);
+                  }}
+                  className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 font-mono ${
+                    isSelected
+                      ? 'bg-[#c1ff72] text-black shadow-[0_0_12px_rgba(193,255,114,0.35)] scale-[1.02]'
+                      : 'bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10'
+                  }`}
+                >
+                  <span>{rule.name}</span>
+                  <span className={`text-[10px] ${isSelected ? 'text-black/70 font-extrabold' : 'text-zinc-400'}`}>
+                    ({formatCurrency(rule.monthlyMaxSpend, settings.currency)}/mo)
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Edit Current Tracker Settings */}
+          <button
+            type="button"
+            id="edit-prorated-tracker-btn"
+            onClick={() => onEditProratedRule(activeRule)}
+            className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/15 text-zinc-300 hover:text-white rounded-xl transition-all"
+            title={`Edit ${activeRule.name} Settings`}
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+
+          {/* New Prorated Tracker Button */}
+          <button
+            type="button"
+            id="new-prorated-tracker-btn"
+            onClick={onOpenAddProratedModal}
+            className="px-3.5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/15 text-zinc-200 hover:text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all uppercase tracking-wider text-[11px]"
+          >
+            <Plus className="w-4 h-4 text-[#c1ff72]" />
+            <span>New Tracker</span>
+          </button>
+
+          {/* Primary Log Tracker Spend Button (Bright Green) */}
+          <button
+            type="button"
+            id="log-prorated-spend-btn"
+            onClick={() => {
+              setQuickLogDate(undefined);
+              setQuickLogModalOpen(true);
+            }}
+            className="px-4 py-2.5 bg-[#c1ff72] hover:bg-[#b0f05f] text-black font-extrabold rounded-xl text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(193,255,114,0.35)] transition-all uppercase tracking-wider text-[11px]"
+          >
+            <Plus className="w-4 h-4 text-black stroke-[3]" />
+            <span>LOG {activeRule.name.toUpperCase()} SPEND</span>
+          </button>
+
+          {/* New Category Button */}
+          {onOpenAddCategory && (
+            <button
+              type="button"
+              id="new-category-prorated-btn"
+              onClick={onOpenAddCategory}
+              className="px-3 py-2.5 bg-white/5 hover:bg-white/10 border border-white/15 text-zinc-300 hover:text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-all uppercase text-[11px]"
+              title="Add a new category"
+            >
+              <Plus className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Category</span>
+            </button>
+          )}
         </div>
-      </div>
       </div>
 
       {/* KPI Cards Grid */}
@@ -451,6 +595,7 @@ interface ProratedBudgetViewProps {
                 <th className="py-3 px-4">Prorated Limit</th>
                 <th className="py-3 px-4">Status & Delta</th>
                 <th className="py-3 px-4">Itemized Purchases</th>
+                <th className="py-3 px-4 text-right">Quick Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04] text-zinc-300">
@@ -537,6 +682,20 @@ interface ProratedBudgetViewProps {
                         <span className="text-zinc-600 italic text-[11px] font-mono">No purchases</span>
                       )}
                     </td>
+                    <td className="py-3 px-4 text-right whitespace-nowrap font-mono">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuickLogDate(rec.date);
+                          setQuickLogModalOpen(true);
+                        }}
+                        className="px-2.5 py-1 bg-white/5 hover:bg-[#c1ff72] hover:text-black text-zinc-300 border border-white/10 rounded-lg text-[10px] font-bold transition-all inline-flex items-center gap-1 uppercase tracking-wider"
+                        title={`Log spend for ${rec.date}`}
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Log Spend</span>
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -544,6 +703,14 @@ interface ProratedBudgetViewProps {
           </table>
         </div>
       </div>
+
+      {/* Streamlined Prorated Quick Spend Modal */}
+      <LogProratedSpendModal
+        isOpen={quickLogModalOpen}
+        onClose={() => setQuickLogModalOpen(false)}
+        rule={activeRule}
+        defaultDate={quickLogDate}
+      />
     </div>
   );
 };

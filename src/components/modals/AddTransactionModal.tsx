@@ -12,6 +12,7 @@ interface AddTransactionModalProps {
   editingTransaction?: Transaction | null;
   defaultType?: TransactionType;
   defaultCategory?: string;
+  defaultDate?: string;
 }
 
 export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
@@ -20,6 +21,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   editingTransaction,
   defaultType = 'expense',
   defaultCategory,
+  defaultDate,
 }) => {
   const { categories, addTransaction, updateTransaction, allTags, settings } = useExpense();
 
@@ -27,7 +29,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
-  const [date, setDate] = useState(getCurrentDateString());
+  const [date, setDate] = useState(defaultDate || getCurrentDateString());
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit_card');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
@@ -56,7 +58,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       setType(initialType);
       setTitle('');
       setAmount('');
-      setDate(getCurrentDateString());
+      setDate(defaultDate || getCurrentDateString());
       setPaymentMethod(initialType === 'income' ? 'bank_transfer' : 'credit_card');
       setTags([]);
       setTagInput('');
@@ -208,7 +210,12 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 <span>{errorMsg}</span>
               </div>
             )}
-
+            {/* Transaction Type Toggle */}
+            <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+              <button
+                type="button"
+                id="type-expense-btn"
+                onClick={() => handleTypeChange('expense')}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                   type === 'expense'
                     ? 'bg-[#ff5f5f] text-white shadow-[0_0_10px_rgba(255,95,95,0.3)]'

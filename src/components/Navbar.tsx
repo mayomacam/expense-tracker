@@ -27,6 +27,16 @@ interface NavbarProps {
   onOpenExport: () => void;
   onOpenSqliteManager: () => void;
   onOpenSidebar: () => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({
+  activeTab,
+  onTabChange,
+  onOpenAddTransaction,
+  onOpenNotifications,
+  onOpenExport,
+  onOpenSqliteManager,
+  onOpenSidebar,
 }) => {
   const {
     selectedMonth,
@@ -167,7 +177,6 @@ interface NavbarProps {
               )}
             </div>
 
-<<<<<<< HEAD
             {/* Sidebar Overview Drawer Trigger */}
             <button
               id="navbar-sidebar-btn"
@@ -180,8 +189,6 @@ interface NavbarProps {
               <span className="uppercase text-[11px] font-bold">Sidebar</span>
             </button>
 
-=======
->>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
             {/* SQLite DB Status & Manager Trigger */}
             <button
               id="navbar-sqlite-btn"
@@ -277,4 +284,3 @@ interface NavbarProps {
     </header>
   );
 };
-

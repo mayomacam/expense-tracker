@@ -1,2 +1,0 @@
-// SQLite database backup file
-export const DB_BACKUP_DATE = '2026-09-02';

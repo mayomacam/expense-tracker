@@ -6,15 +6,17 @@ A full-stack personal finance application and prorated daily budget pacing syste
 
 ## 🌟 Highlights & Core Capabilities
 
-- ⏱️ **Prorated Daily Budget Engine**: Break down monthly budgets into dynamic daily spending limits `(Monthly Cap + Rollover) / Days in Month`. Real-time daily allowance tracking, pacing pace indicators, and overspend threshold alerts.
+- ⏱️ **Prorated Daily Budget Engine**: Break down monthly budgets into dynamic daily spending limits `(Monthly Cap + Rollover) / Days in Month`. Real-time daily allowance tracking, pacing velocity indicators, and overspend threshold alerts.
+- ⚡ **Streamlined Prorated Quick-Spend Logger**: Dedicated lightweight logger modal (`LogProratedSpendModal`) for recording daily prorated spending in 1 click without going through general expense forms.
+- 📄 **PDF Report Generation**: Download & print styled monthly PDF financial statements complete with executive cashflow totals, prorated status, and itemized ledgers.
+- 🎛️ **1-Click Tracker Switcher**: Instant switching between prorated trackers (*Snacks & Treats*, *Travel*, *Food*, etc.) directly via the Sidebar or the top Pill Tab Bar.
 - 🇮🇳 **Default Currency (₹ INR) & Multi-Currency**: Native support for Indian Rupee (`₹` / `INR`) with Indian numbering format (`en-IN`), plus instant switching between `$`, `€`, `£`, `¥`, `C$`, and `A$`.
 - 🗄️ **Persistent SQLite Database**: Embedded SQLite database (`data/budget.sqlite`) backed by RESTful API endpoints for resilient local and containerized data persistence in your current folder.
-- 🐳 **Kali Linux Docker Container & OpenSSH**: Fully containerized environment using `kalilinux/kali-rolling` with OpenSSH server daemon on port `16000` (`ssh kali@localhost -p 16000`) and Web App on port `16001`.
-- 💳 **Complete Transactions Ledger**: Filter by categories, payment methods, transaction types, custom tags, date ranges, and search keywords. Includes CSV import and export with instant statement generation.
+- 🐳 **Kali Linux Docker Container & OpenSSH**: Fully containerized environment using `kalilinux/kali-rolling` with OpenSSH server daemon on port `16000` (`ssh kali@localhost -p 16000`), Web App on port `16001`, and live source/dist volume mounts.
+- 💳 **Complete Transactions Ledger**: Filter by categories, payment methods, transaction types, custom tags, date ranges, and search keywords. Includes CSV & PDF exports.
 - 🔁 **Recurring Bills & Auto-Apply**: Track subscriptions, utilities, and rent with automatic monthly transaction batch generation.
 - 🎯 **Savings Goals & Celebrations**: Create milestone vaults, log deposits/withdrawals, track progress percentages, and celebrate completions with interactive confetti.
 - 📉 **Debt Payoff & Amortization**: Track student loans, car loans, mortgages, and credit cards with principal vs. interest breakdown and installment history.
-- 📊 **Executive Monthly Reports**: Comprehensive financial summaries, savings rates, burn rates, category distributions, and downloadable monthly audit CSVs.
 - 🛠️ **SQLite Manager**: Live disk storage inspector, table row counters, database re-seed, zero-state wipe, and demo data loader.
 
 ---
@@ -43,7 +45,7 @@ A full-stack personal finance application and prorated daily budget pacing syste
 │   │ /app/data            │                                  │
 │   └──────────┬───────────┘                                  │
 └──────────────┼──────────────────────────────────────────────┘
-               │ Host Volume Mount (./data:/app/data)
+               │ Host Volume Mounts (./data, ./dist, ./src)
 ┌──────────────▼──────────────────────────────────────────────┐
 │  Host Filesystem: ./data/budget.sqlite (Current Folder)     │
 └─────────────────────────────────────────────────────────────┘
@@ -54,9 +56,20 @@ A full-stack personal finance application and prorated daily budget pacing syste
 ## 📁 Project Structure
 
 ```
+├── src/
+│   ├── features/                # Modular Feature Exports Index
+│   ├── components/
+│   │   ├── views/               # Multi-page Views (Prorated, Dashboard, Ledger, etc.)
+│   │   ├── modals/              # LogProratedSpendModal, AddTransactionModal, ExportReportModal
+│   │   ├── Navbar.tsx           # Top navigation bar
+│   │   └── Sidebar.tsx          # Sidebar with 1-click tracker switcher & cashflow stats
+│   ├── context/                 # ExpenseContext state provider
+│   ├── utils/                   # budgetCalculations, formatters (PDF & CSV generators)
+│   └── types.ts                 # TypeScript type declarations
 ├── docs/                        # Complete Documentation Suite
 │   ├── ARCHITECTURE.md          # Technical architecture & state management
-│   ├── DOCKER_SSH_GUIDE.md      # Docker container & OpenSSH setup guide
+│   └── DOCKER_SSH_GUIDE.md      # Docker container & OpenSSH setup guide
+├── docker-start.ps1             # PowerShell script to launch Docker container with mounts
 ├── server.ts                    # Express server & API endpoints
 ├── index.html                   # Application entry point
 ├── package.json                 # Project dependencies and npm scripts
@@ -69,13 +82,13 @@ A full-stack personal finance application and prorated daily budget pacing syste
 
 ### Option 1: Docker Container with Kali Linux & OpenSSH (Recommended)
 
-1. Run the PowerShell helper script or docker run command:
+1. Run the PowerShell helper script:
    ```powershell
    .\docker-start.ps1
    ```
    Or manually run via WSL Kali Linux:
    ```bash
-   wsl -d kali-linux docker run -d --name expense-tracker-server --restart unless-stopped -p 16001:3000 -p 16000:22 -v /mnt/e/projects/expense-tracker/data:/app/data expense-tracker-kali
+   wsl -d kali-linux docker run -d --name expense-tracker-server --restart unless-stopped -p 16001:3000 -p 16000:22 -v /mnt/e/projects/expense-tracker/data:/app/data -v /mnt/e/projects/expense-tracker/dist:/app/dist expense-tracker-kali
    ```
 
 2. Access the Application:
@@ -107,7 +120,7 @@ npm start
 For in-depth guides and references, explore the **`docs/`** directory:
 
 - 🐳 **[Docker & SSH Guide](docs/DOCKER_SSH_GUIDE.md)**: Kali Linux container architecture, SSH credentials, volume mounting, and management.
-- **Tooling**: Vite, esbuild, tsx.
+- 🏗️ **[Architecture Guide](docs/ARCHITECTURE.md)**: Application architecture, state management, and SQLite engine.
 
 ---
 

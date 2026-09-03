@@ -201,3 +201,152 @@ export function generateMonthlyReportCSV(
 
   return lines.join('\n');
 }
+
+/**
+ * Generate Printable PDF Financial Statement Window
+ */
+export function generatePDFReportWindow(
+  month: string,
+  transactions: Transaction[],
+  categories: Category[],
+  proratedRules: ProratedBudgetRule[],
+  savingsGoals: any[] = [],
+  debts: any[] = [],
+  currency: string = '₹'
+): void {
+  const monthName = getMonthName(month);
+  const monthTxs = transactions.filter((t) => t.date.startsWith(month));
+  const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
+
+  const totalIncome = monthTxs
+    .filter((t) => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const totalExpense = monthTxs
+    .filter((t) => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const netBalance = totalIncome - totalExpense;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Financial Report - ${monthName}</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; background: #fff; color: #111; }
+          .header { text-align: center; border-bottom: 3px solid #111; padding-bottom: 15px; margin-bottom: 25px; }
+          .header h1 { margin: 0; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; }
+          .header p { margin: 5px 0 0 0; color: #666; font-size: 13px; }
+          .summary-grid { display: flex; justify-content: space-between; margin-bottom: 25px; gap: 15px; }
+          .card { flex: 1; padding: 15px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; text-align: center; }
+          .card span { font-size: 11px; text-transform: uppercase; color: #666; font-weight: bold; }
+          .card h2 { margin: 5px 0 0 0; font-size: 20px; }
+          .income { color: #2e7d32; }
+          .expense { color: #c62828; }
+          .net { color: #1565c0; }
+          h3 { font-size: 14px; text-transform: uppercase; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-top: 25px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+          th, td { border: 1px solid #dee2e6; padding: 8px 12px; text-align: left; }
+          th { background: #e9ecef; font-weight: bold; text-transform: uppercase; font-size: 10px; }
+          tr:nth-child(even) { background: #f8f9fa; }
+          .no-print { margin-top: 20px; text-align: center; }
+          .btn-print { padding: 10px 20px; background: #111; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+          @media print {
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Monthly Financial Statement</h1>
+          <p>Period: ${monthName} | Generated on ${new Date().toLocaleDateString()}</p>
+        </div>
+
+        <div class="summary-grid">
+          <div class="card">
+            <span>Total Income</span>
+            <h2 class="income">${formatCurrency(totalIncome, currency)}</h2>
+          </div>
+          <div class="card">
+            <span>Total Expenses</span>
+            <h2 class="expense">${formatCurrency(totalExpense, currency)}</h2>
+          </div>
+          <div class="card">
+            <span>Net Balance</span>
+            <h2 class="net">${formatCurrency(netBalance, currency)}</h2>
+          </div>
+        </div>
+
+        <h3>Prorated Daily Limit Trackers</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Tracker Name</th>
+              <th>Monthly Cap</th>
+              <th>Daily Allowance</th>
+              <th>Total Spent</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${proratedRules.map((r) => {
+              const ruleSpent = monthTxs
+                .filter((t) => t.category === r.categoryId || t.title.toLowerCase().includes(r.name.toLowerCase()))
+                .reduce((s, t) => s + t.amount, 0);
+              return `
+                <tr>
+                  <td><strong>${r.name}</strong></td>
+                  <td>${formatCurrency(r.monthlyMaxSpend, currency)}</td>
+                  <td>${formatCurrency(r.monthlyMaxSpend / 30, currency)}/day</td>
+                  <td>${formatCurrency(ruleSpent, currency)}</td>
+                  <td>${ruleSpent > r.monthlyMaxSpend ? '<span style="color:#c62828">Exceeded</span>' : '<span style="color:#2e7d32">On Track</span>'}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+
+        <h3>Itemized Transactions (${monthTxs.length})</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Title / Description</th>
+              <th>Type</th>
+              <th>Category</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${monthTxs.map((t) => `
+              <tr>
+                <td>${t.date}</td>
+                <td>${t.title}</td>
+                <td>${t.type.toUpperCase()}</td>
+                <td>${categoryMap.get(t.category) || t.category}</td>
+                <td><strong>${formatCurrency(t.amount, currency)}</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div class="no-print">
+          <button class="btn-print" onclick="window.print()">Print / Save as PDF</button>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() { window.print(); }, 500);
+          };
+        </script>
+      </body>
+    </html>
+  `;
+
+  const printWin = window.open('', '_blank');
+  if (printWin) {
+    printWin.document.write(html);
+    printWin.document.close();
+  }
+}

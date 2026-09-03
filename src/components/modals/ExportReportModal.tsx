@@ -6,6 +6,7 @@ import {
   downloadCSV,
   generateTransactionsCSV,
   generateMonthlyReportCSV,
+  generatePDFReportWindow,
   getMonthName,
 } from '../../utils/formatters';
 
@@ -19,14 +20,24 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({ isOpen, on
     useExpense();
 
   const [exportType, setExportType] = useState<
-    'transactions_all' | 'monthly_statement' | 'prorated_log' | 'savings_debt'
-  >('monthly_statement');
+    'pdf_statement' | 'monthly_statement' | 'transactions_all' | 'prorated_log' | 'savings_debt'
+  >('pdf_statement');
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   if (!isOpen) return null;
 
   const handleExport = () => {
-    if (exportType === 'monthly_statement') {
+    if (exportType === 'pdf_statement') {
+      generatePDFReportWindow(
+        selectedMonth,
+        transactions,
+        categories,
+        proratedRules,
+        savingsGoals,
+        debts,
+        settings.currency
+      );
+    } else if (exportType === 'monthly_statement') {
       const csv = generateMonthlyReportCSV(
         selectedMonth,
         transactions,
@@ -116,7 +127,34 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({ isOpen, on
                 Select Report Format
               </label>
 
-              {/* Options */}
+              {/* PDF Printable Financial Statement Option */}
+              <div
+                onClick={() => setExportType('pdf_statement')}
+                className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+                  exportType === 'pdf_statement'
+                    ? 'border-[#c1ff72] bg-[#c1ff72]/10 ring-1 ring-[#c1ff72]/30'
+                    : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]'
+                }`}
+              >
+                <div className="mt-0.5 p-1 rounded-md bg-[#c1ff72] text-black font-bold">
+                  <FileText className="w-4 h-4 text-black" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white">
+                      Printable PDF Financial Statement
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#c1ff72] text-black font-extrabold uppercase">
+                      NEW PDF
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Generate a styled PDF document with executive summary, prorated tracker status, and full itemized ledger.
+                  </p>
+                </div>
+              </div>
+
+              {/* CSV Options */}
               <div
                 onClick={() => setExportType('monthly_statement')}
                 className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${

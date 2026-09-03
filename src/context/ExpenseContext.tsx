@@ -209,16 +209,12 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     const tempId = `tx-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
     const newTx: Transaction = { ...tx, id: tempId };
 
-<<<<<<< HEAD
     // Auto switch selectedMonth if adding transaction to a different month
     const txMonth = tx.date ? tx.date.substring(0, 7) : selectedMonth;
     if (txMonth && txMonth !== selectedMonth) {
       setSettings((prev) => ({ ...prev, selectedMonth: txMonth }));
       api.updateSettings({ selectedMonth: txMonth }).catch(() => {});
     }
-
-=======
->>>>>>> 86d06bd94c444a4feab882635e0b757f4525c879
     // Optimistic update
     setTransactions((prev) => [newTx, ...prev]);
 

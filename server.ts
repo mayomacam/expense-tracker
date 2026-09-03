@@ -12,9 +12,6 @@ import {
   settingsRepo,
   readAlertsRepo,
   getDatabaseStats,
-  resetToSeedData,
-  resetAllDataToZero,
-  populateDemoData,
 } from './src/server/db';
 import { Transaction, Category, ProratedBudgetRule, SavingsGoal, DebtItem, RecurringItem } from './src/types';
 

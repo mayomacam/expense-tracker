@@ -14,6 +14,7 @@ services:
       # Persistent SQLite database in current host folder
       - ./data:/app/data
       # Live Source Code Mounts - enables INSTANT updates without rebuilding Docker image!
+      - ./dist:/app/dist
       - ./src:/app/src
       - ./public:/app/public
       - ./index.html:/app/index.html
