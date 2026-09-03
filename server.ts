@@ -3,6 +3,8 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import {
   initDatabase,
+  resetAllDataToZero,
+  populateDemoData,
   transactionRepo,
   deletedTransactionRepo,
   categoryRepo,

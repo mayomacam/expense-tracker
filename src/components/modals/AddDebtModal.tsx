@@ -76,7 +76,6 @@ export const AddDebtModal: React.FC<AddDebtModalProps> = ({
         lenderName: lenderName.trim() || undefined,
         debtType,
         totalPrincipal: numPrincipal,
-        remainingBalance: numPrincipal,
         interestRate: numInterest,
         minimumPayment: numMinPay,
         dueDay: numDueDay,

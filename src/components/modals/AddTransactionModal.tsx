@@ -4,7 +4,7 @@ import { X, Plus, Calendar, Tag as TagIcon, CreditCard, FileText, Check, AlertCi
 import { useExpense } from '../../context/ExpenseContext';
 import { CategoryIcon } from '../common/CategoryIcon';
 import { Transaction, TransactionType, PaymentMethod } from '../../types';
-import { getCurrentDateString } from '../../utils/formatters';
+import { getCurrentDateString, formatCurrency } from '../../utils/formatters';
 
 interface AddTransactionModalProps {
   isOpen: boolean;

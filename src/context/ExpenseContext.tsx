@@ -34,7 +34,6 @@ interface ExpenseContextType {
   refreshFromDb: () => Promise<void>;
 
   // Transaction Actions (SQLite CRUD)
-  transactions: Transaction[];
   deletedTransactions: Transaction[];
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<Transaction>;
   updateTransaction: (id: string, tx: Partial<Transaction>) => Promise<void>;

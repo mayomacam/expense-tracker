@@ -257,7 +257,7 @@ const MainApp: React.FC = () => {
       <div className="sm:hidden fixed bottom-4 right-4 z-40 flex items-center gap-2">
         <button
           type="button"
-          onClick={() => setActiveTab('prorated')}
+          onClick={() => handleTabChange('prorated')}
           className="w-12 h-12 rounded-full bg-[#111114] border border-[#c1ff72]/40 text-[#c1ff72] flex items-center justify-center shadow-lg active:scale-95 transition-transform"
           title="Prorated Daily Limit"
         >
@@ -330,7 +330,7 @@ const MainApp: React.FC = () => {
       <NotificationCenterModal
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
-        onNavigateTab={setActiveTab}
+        onNavigateTab={handleTabChange}
       />
 
       <SqliteManagerModal
@@ -349,7 +349,7 @@ const MainApp: React.FC = () => {
           onOpenAddTransaction={handleOpenAddTransaction}
           onOpenAddProratedModal={handleOpenAddProrated}
           onEditProratedRule={handleEditProrated}
-          onNavigateTab={setActiveTab}
+          onNavigateTab={handleTabChange}
         />
       </div>
     </div>

@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   ChevronRight,
   Zap,
+  Trash2,
 } from 'lucide-react';
 import { useExpense } from '../context/ExpenseContext';
 import { formatCurrency, getMonthName } from '../utils/formatters';

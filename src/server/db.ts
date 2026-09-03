@@ -210,17 +210,11 @@ function createSchema() {
   `);
 }
 
-function seedIfEmpty() {
-  if (!db) return;
-  const rows = query<any>('SELECT COUNT(*) as count FROM transactions');
-  if (rows[0] && rows[0].count > 0) return;
-
-  console.log('🌱 Database is empty. Seeding initial demo data...');
-
+function insertDemoData(demo: ReturnType<typeof getDemoSeedData>) {
   // Categories
   for (const cat of demo.categories) {
     run(
-      `INSERT INTO categories (id, name, icon, color, monthlyBudget, isCustom) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO categories (id, name, icon, color, monthlyBudget, isCustom) VALUES (?, ?, ?, ?, ?, ?)`,
       [cat.id, cat.name, cat.icon, cat.color, cat.monthlyBudget || 0, cat.isCustom ? 1 : 0]
     );
   }
@@ -228,7 +222,7 @@ function seedIfEmpty() {
   // Transactions
   for (const tx of demo.transactions) {
     run(
-      `INSERT INTO transactions (id, title, amount, type, category, date, tags, notes, paymentMethod, isRecurring, recurringFrequency, receiptUrl)
+      `INSERT OR REPLACE INTO transactions (id, title, amount, type, category, date, tags, notes, paymentMethod, isRecurring, recurringFrequency, receiptUrl)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tx.id,
@@ -250,7 +244,7 @@ function seedIfEmpty() {
   // Prorated Rules
   for (const rule of demo.proratedRules) {
     run(
-      `INSERT INTO prorated_rules (id, name, categoryId, targetTags, monthlyMaxSpend, month, rolloverEnabled, rolloverAmount, alertThresholdPercent, notes)
+      `INSERT OR REPLACE INTO prorated_rules (id, name, categoryId, targetTags, monthlyMaxSpend, month, rolloverEnabled, rolloverAmount, alertThresholdPercent, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         rule.id,
@@ -270,7 +264,7 @@ function seedIfEmpty() {
   // Savings Goals
   for (const goal of demo.savingsGoals) {
     run(
-      `INSERT INTO savings_goals (id, name, targetAmount, currentAmount, targetDate, icon, color, category, notes)
+      `INSERT OR REPLACE INTO savings_goals (id, name, targetAmount, currentAmount, targetDate, icon, color, category, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         goal.id,
@@ -288,7 +282,7 @@ function seedIfEmpty() {
     if (goal.history && goal.history.length > 0) {
       for (const h of goal.history) {
         run(
-          `INSERT INTO savings_history (id, goalId, date, amount, note, type) VALUES (?, ?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO savings_history (id, goalId, date, amount, note, type) VALUES (?, ?, ?, ?, ?, ?)`,
           [h.id, goal.id, h.date, h.amount, h.note || null, h.type]
         );
       }
@@ -298,7 +292,7 @@ function seedIfEmpty() {
   // Debts
   for (const debt of demo.debts) {
     run(
-      `INSERT INTO debts (id, name, lenderName, debtType, totalPrincipal, remainingBalance, interestRate, minimumPayment, dueDay, notes, color)
+      `INSERT OR REPLACE INTO debts (id, name, lenderName, debtType, totalPrincipal, remainingBalance, interestRate, minimumPayment, dueDay, notes, color)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         debt.id,
@@ -318,7 +312,7 @@ function seedIfEmpty() {
     if (debt.payments && debt.payments.length > 0) {
       for (const p of debt.payments) {
         run(
-          `INSERT INTO debt_payments (id, debtId, date, amount, principalPaid, interestPaid, note) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO debt_payments (id, debtId, date, amount, principalPaid, interestPaid, note) VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [p.id, debt.id, p.date, p.amount, p.principalPaid, p.interestPaid, p.note || null]
         );
       }
@@ -328,7 +322,7 @@ function seedIfEmpty() {
   // Recurring
   for (const rec of demo.recurring) {
     run(
-      `INSERT INTO recurring_items (id, title, amount, type, category, frequency, dayOfMonth, autoApply, tags, paymentMethod, lastAppliedMonth, isActive)
+      `INSERT OR REPLACE INTO recurring_items (id, title, amount, type, category, frequency, dayOfMonth, autoApply, tags, paymentMethod, lastAppliedMonth, isActive)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         rec.id,
@@ -349,7 +343,7 @@ function seedIfEmpty() {
 
   // User Settings
   run(
-    `INSERT INTO user_settings (id, currency, currencyCode, pushNotificationsEnabled, dailyBudgetAlertThreshold, monthlyBudgetWarningThreshold, enableRolloverByDefault, selectedMonth, userName)
+    `INSERT OR REPLACE INTO user_settings (id, currency, currencyCode, pushNotificationsEnabled, dailyBudgetAlertThreshold, monthlyBudgetWarningThreshold, enableRolloverByDefault, selectedMonth, userName)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       'default',
@@ -363,7 +357,80 @@ function seedIfEmpty() {
       demo.settings.userName,
     ]
   );
+}
 
+export function populateDemoData() {
+  if (!db) return;
+  console.log('🔄 Wiping and populating demo dataset in SQLite...');
+  run('DELETE FROM transactions');
+  run('DELETE FROM deleted_transactions');
+  run('DELETE FROM categories');
+  run('DELETE FROM prorated_rules');
+  run('DELETE FROM savings_goals');
+  run('DELETE FROM savings_history');
+  run('DELETE FROM debts');
+  run('DELETE FROM debt_payments');
+  run('DELETE FROM recurring_items');
+  run('DELETE FROM read_alerts');
+  run('DELETE FROM user_settings');
+
+  const demo = getDemoSeedData();
+  insertDemoData(demo);
+  persistDb();
+  console.log('✅ Demo dataset populated successfully.');
+}
+
+export function resetAllDataToZero() {
+  if (!db) return;
+  console.log('🧹 Wiping all data to clean zero state in SQLite...');
+  run('DELETE FROM transactions');
+  run('DELETE FROM deleted_transactions');
+  run('DELETE FROM categories');
+  run('DELETE FROM prorated_rules');
+  run('DELETE FROM savings_goals');
+  run('DELETE FROM savings_history');
+  run('DELETE FROM debts');
+  run('DELETE FROM debt_payments');
+  run('DELETE FROM recurring_items');
+  run('DELETE FROM read_alerts');
+  run('DELETE FROM user_settings');
+
+  const initial = getInitialSeedData();
+  for (const cat of initial.categories) {
+    run(
+      `INSERT OR REPLACE INTO categories (id, name, icon, color, monthlyBudget, isCustom) VALUES (?, ?, ?, ?, ?, ?)`,
+      [cat.id, cat.name, cat.icon, cat.color, cat.monthlyBudget || 0, cat.isCustom ? 1 : 0]
+    );
+  }
+
+  run(
+    `INSERT OR REPLACE INTO user_settings (id, currency, currencyCode, pushNotificationsEnabled, dailyBudgetAlertThreshold, monthlyBudgetWarningThreshold, enableRolloverByDefault, selectedMonth, userName)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      'default',
+      initial.settings.currency,
+      initial.settings.currencyCode,
+      initial.settings.pushNotificationsEnabled ? 1 : 0,
+      initial.settings.dailyBudgetAlertThreshold,
+      initial.settings.monthlyBudgetWarningThreshold,
+      initial.settings.enableRolloverByDefault ? 1 : 0,
+      initial.settings.selectedMonth,
+      initial.settings.userName,
+    ]
+  );
+
+  persistDb();
+  console.log('✅ Database reset to clean zero records.');
+}
+
+function seedIfEmpty() {
+  if (!db) return;
+  const rows = query<any>('SELECT COUNT(*) as count FROM categories');
+  if (rows[0] && rows[0].count > 0) return;
+
+  console.log('🌱 Database is empty. Seeding initial demo data...');
+  const demo = getDemoSeedData();
+  insertDemoData(demo);
   persistDb();
   console.log('✅ SQLite seeded with demo sample records.');
 }

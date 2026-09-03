@@ -57,7 +57,6 @@ export const LogProratedSpendModal: React.FC<LogProratedSpendModalProps> = ({
     const spendTitle = title.trim() || `${rule.name} Spend`;
 
     addTransaction({
-      id: `tx-prorated-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       title: spendTitle,
       amount: numAmount,
       type: 'expense',

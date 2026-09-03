@@ -28,6 +28,7 @@ import {
   Cookie,
   Coffee,
   Link2,
+  X,
 } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
 import { ProratedBudgetRule, Transaction } from '../../types';
