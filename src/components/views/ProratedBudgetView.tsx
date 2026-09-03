@@ -95,6 +95,17 @@ export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({
     }));
   }, [breakdown]);
 
+  const ruleTransactions = useMemo(() => {
+    return activeRule ? getTransactionsForRule(activeRule, transactions) : [];
+  }, [activeRule, transactions]);
+
+  const unlinkedMonthTransactions = useMemo(() => {
+    if (!activeRule) return [];
+    const monthTxs = transactions.filter((t) => t.date.startsWith(selectedMonth) && t.type === 'expense');
+    const linkedIds = new Set(ruleTransactions.map((t) => t.id));
+    return monthTxs.filter((t) => !linkedIds.has(t.id));
+  }, [activeRule, transactions, selectedMonth, ruleTransactions]);
+
   if (!activeRule || !breakdown) {
     return (
       <div className="space-y-6 font-mono">
@@ -668,14 +679,39 @@ export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({
                                 <span className="font-bold text-white">
                                   {formatCurrency(tx.amount, settings.currency)}
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={() => deleteTransaction(tx.id)}
-                                  className="text-zinc-500 hover:text-[#ff5f5f] p-0.5 transition-colors"
-                                  title="Delete item"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
+                                 {/* Unlink from Prorated Tracker (Keeps in ledger) */}
+                                 <button
+                                   type="button"
+                                   onClick={() => {
+                                     const cleanedTags = (tx.tags || []).filter(
+                                       (t) => !t.startsWith('rule:') && t.toLowerCase() !== activeRule.name.toLowerCase()
+                                     );
+                                     const fallbackCat = categories.find((c) => c.id !== activeRule.categoryId)?.id || 'cat-groceries';
+                                     updateTransaction(tx.id, {
+                                       category: fallbackCat,
+                                       tags: cleanedTags,
+                                     });
+                                   }}
+                                   className="px-1.5 py-0.5 text-zinc-400 hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors text-[10px] flex items-center gap-1 font-semibold"
+                                   title={`Unlink "${tx.title}" from ${activeRule.name} (keeps transaction in your ledger)`}
+                                 >
+                                   <X className="w-3 h-3" />
+                                   <span>Unlink</span>
+                                 </button>
+
+                                 {/* Permanent Delete */}
+                                 <button
+                                   type="button"
+                                   onClick={() => {
+                                     if (window.confirm(`Permanently delete "${tx.title}" from your database?`)) {
+                                       deleteTransaction(tx.id);
+                                     }
+                                   }}
+                                   className="text-zinc-500 hover:text-[#ff5f5f] p-1 transition-colors"
+                                   title="Delete permanently from database"
+                                 >
+                                   <Trash2 className="w-3 h-3" />
+                                 </button>
                               </div>
                             </div>
                           ))}
