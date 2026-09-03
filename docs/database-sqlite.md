@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   isRecurring INTEGER DEFAULT 0,
   recurringFrequency TEXT,
   receiptUrl TEXT,
+  proratedRuleId TEXT,               -- Links explicitly to isolated prorated daily budget rule
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 ```
@@ -92,6 +93,7 @@ CREATE TABLE IF NOT EXISTS deleted_transactions (
   isRecurring INTEGER DEFAULT 0,
   recurringFrequency TEXT,
   receiptUrl TEXT,
+  proratedRuleId TEXT,
   deleted_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 ```

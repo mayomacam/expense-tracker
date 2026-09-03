@@ -8,13 +8,13 @@ Designed for precise daily financial control, this application goes beyond conve
 
 ## Key Highlights
 
-- **Prorated Daily Limit Budgeting**: Automatically calculates daily spending allowances for dynamic expense categories (e.g., dining, groceries, entertainment) across the exact days in any month, tracking cumulative pacing, pace alerts, and rollover surpluses.
+- **Prorated Daily Limit Budgeting (100% Isolated)**: Automatically calculates daily spending allowances for dynamic expense categories across the exact days in any month, tracking cumulative pacing, pace alerts, and rollover surpluses. Prorated rule spends are strictly isolated via `proratedRuleId` so they do not pollute general category budgets or general total spent.
 - **Durable SQLite Storage (Zero Mock)**: Complete relational database engine running via SQLite WASM (`sql.js`) with atomic file writes to `data/budget.sqlite`. No volatile in-memory loss on server reboot.
-- **Trash Bin & Soft Deletes**: Transactions are protected with a two-stage deletion lifecycle—deleted items move to the Trash Bin where they can be inspected and restored or permanently purged.
+- **Trash Bin & Soft Deletes**: Transactions are protected with a two-stage deletion lifecycle—deleted items move to the Trash Bin where they can be inspected and restored or permanently purged. Reset-to-zero is protected behind password authentication.
 - **Automated Month-Start Recurring Engine**: Scheduled recurring monthly bills, subscriptions, and paychecks are automatically cloned into the live database at the start of each month, with per-item enable/disable controls, deduplication guards, and live execution status.
 - **Hash-Based Bookmarkable Routing**: Full browser history integration supporting direct URLs (`/#/dashboard`, `/#/transactions`, `/#/prorated`, `/#/budgets`, `/#/savings-debt`, `/#/reports`, `/#/categories`, `/#/trash`) with back/forward navigation and refresh persistence.
 - **Resilient UI Architecture**: Built-in animated layout loading skeletons during SQLite hydration, global React Error Boundary with recovery triggers, and centralized modal management.
-- **Savings Goals & Debt Paydown**: Visual progress bars, target date timelines, deposit/withdrawal histories for savings, and principal/interest amortization tracking for debts.
+- **Savings Goals & Debt Paydown**: Target amounts, remaining balance left to save, deposit/withdrawal timeline logs with timestamps, debt minimum payments, APR % tracking, and overdue status badges.
 - **Export & Reporting**: Multi-format reporting engine offering CSV exports (itemized transactions, category breakdowns, daily pace metrics) and browser-based printable/PDF financial statements.
 - **Security-Hardened Docker Packaging**: Production multi-stage Alpine Dockerfile adhering to least-privilege principles (unprivileged `node` user, `0700` data directory permissions, `tini` PID 1 process management, `--ignore-scripts`, and container healthchecks).
 

@@ -40,11 +40,18 @@ $$C_{\text{allowed}}(d) = A_{\text{daily}} \times d = B_{\text{eff}} \times \fra
 ### 1.4 Cumulative Actual Spend ($S_{\text{actual}}(d)$)
 The sum of all qualifying expense transactions occurring on or before day $d$:
 
-$$S_{\text{actual}}(d) = \sum_{t \in T,\, \text{day}(t) \le d} \text{amount}(t)$$
+$$S_{\text{actual}}(d) = \sum_{t \in T,\, \text{day}(t) \le d,\, \text{proratedRuleId}(t) = \text{rule.id}} \text{amount}(t)$$
 
-Where transaction $t$ matches the rule's `categoryId` or contains any of the rule's `targetTags`.
+Where transaction $t$ is explicitly linked to the prorated rule via `proratedRuleId`.
 
 ---
+
+## 1.5 Strict Domain Isolation Guarantees
+
+To ensure complete financial independence:
+1. **General Expenses Immunity**: General transactions (e.g. rent, groceries, family outings, utility bills) **do not** reduce your daily prorated allowance unless explicitly allocated to a prorated rule via `proratedRuleId`.
+2. **Category Budget Immunity**: Spends logged under a Prorated Daily Budget rule **do not** count toward or pollute general monthly category budgets (`catSpentMap`), Dashboard Total Spent, or Net Surplus.
+3. **Dedicated Tracking**: Prorated daily budgets serve as an isolated daily pocket-money calculator with its own allowable limit curve and pace indicators.
 
 ## 2. Real-Time Pace Evaluation
 
