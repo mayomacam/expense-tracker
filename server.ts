@@ -457,10 +457,10 @@ async function startServer() {
 
   app.post('/api/debts/:id/payments', (req, res) => {
     try {
-      const { amount, principalPaid, interestPaid, note } = req.body;
+      const { amount, principalPaid, interestPaid, date, note } = req.body;
       const paymentItem = {
         id: `pay-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        date: new Date().toISOString().slice(0, 10),
+        date: date || new Date().toISOString().slice(0, 10),
         amount: Number(amount),
         principalPaid: Number(principalPaid ?? amount),
         interestPaid: Number(interestPaid || 0),
