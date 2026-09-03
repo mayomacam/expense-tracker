@@ -4,7 +4,6 @@ import fs from 'fs';
 import {
   initDatabase,
   resetAllDataToZero,
-  populateDemoData,
   transactionRepo,
   deletedTransactionRepo,
   categoryRepo,
@@ -87,15 +86,6 @@ async function startServer() {
 
   app.post('/api/db/reset', handleResetToZeroEndpoint);
   app.post('/api/db/reset-to-zero', handleResetToZeroEndpoint);
-
-  app.post('/api/db/load-demo', (req, res) => {
-    try {
-      populateDemoData();
-      res.json({ success: true, message: 'Loaded demo dataset into SQLite.' });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
 
   // Transactions
   app.get('/api/transactions', (req, res) => {

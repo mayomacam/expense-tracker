@@ -8,7 +8,7 @@ interface SqliteManagerModalProps {
 }
 
 export const SqliteManagerModal: React.FC<SqliteManagerModalProps> = ({ isOpen, onClose }) => {
-  const { dbStatus, refreshFromDb, resetToZero, loadDemoData, isLoading } = useExpense();
+  const { dbStatus, refreshFromDb, resetToZero, isLoading } = useExpense();
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -26,16 +26,6 @@ export const SqliteManagerModal: React.FC<SqliteManagerModalProps> = ({ isOpen, 
       setTimeout(() => setActionMessage(null), 4000);
     } catch (err: any) {
       alert('Error resetting database: ' + err.message);
-    }
-  };
-
-  const handleLoadDemo = async () => {
-    try {
-      await loadDemoData();
-      setActionMessage('Demo dataset populated into SQLite.');
-      setTimeout(() => setActionMessage(null), 4000);
-    } catch (err: any) {
-      alert('Error loading demo: ' + err.message);
     }
   };
 
@@ -109,28 +99,16 @@ export const SqliteManagerModal: React.FC<SqliteManagerModalProps> = ({ isOpen, 
             </div>
           </div>
 
-          <div className="pt-2 border-t border-[#27272a] space-y-2">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleLoadDemo}
-                disabled={isLoading}
-                className="flex-1 py-2 text-xs font-medium text-zinc-200 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors flex items-center justify-center gap-1.5"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                <span>Load Demo Dataset</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleResetToZero}
-                disabled={isLoading}
-                className="flex-1 py-2 text-xs font-medium text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition-colors flex items-center justify-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Reset to Zero</span>
-              </button>
-            </div>
+          <div className="pt-2 border-t border-[#27272a]">
+            <button
+              type="button"
+              onClick={handleResetToZero}
+              disabled={isLoading}
+              className="w-full py-2 text-xs font-medium text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Reset Database to Zero (Password Protected)</span>
+            </button>
           </div>
         </div>
 

@@ -85,7 +85,6 @@ interface ExpenseContextType {
   // Database actions
   resetToZero: (password?: string) => Promise<void>;
   resetAllDataToZero: (password?: string) => Promise<void>;
-  loadDemoData: () => Promise<void>;
 }
 
 const ExpenseContext = createContext<ExpenseContextType | null>(null);
@@ -530,11 +529,6 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await refreshFromDb();
   };
 
-  const loadDemoData = async () => {
-    await api.loadDemoData();
-    await refreshFromDb();
-  };
-
   return (
     <ExpenseContext.Provider
       value={{
@@ -586,7 +580,6 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         clearReadAlerts,
         resetToZero,
         resetAllDataToZero,
-        loadDemoData,
       }}
     >
       {children}

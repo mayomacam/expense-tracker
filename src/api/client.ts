@@ -30,7 +30,6 @@ export const api = {
       headers: jsonHeaders,
       body: JSON.stringify({ password }),
     }).then(handleResponse<{ success: boolean; message: string }>),
-  loadDemoData: () => fetch('/api/db/load-demo', { method: 'POST' }).then(handleResponse<{ success: boolean; message: string }>),
 
   // Transactions
   getTransactions: () => fetch('/api/transactions').then(handleResponse<Transaction[]>),

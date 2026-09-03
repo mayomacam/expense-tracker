@@ -53,17 +53,6 @@ The Expense & Prorated Budget Tracker exposes a standard RESTful HTTP API on por
   }
   ```
 
-### 1.3 Load Sample Demo Dataset
-- **Method**: `POST /api/db/load-demo`
-- **Description**: Populates rich demonstration records (realistic transactions, prorated grocery/dining limits, recurring subscriptions, and debt entries).
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "message": "Loaded demo dataset into SQLite."
-  }
-  ```
-
 ---
 
 ## 2. Transactions API
