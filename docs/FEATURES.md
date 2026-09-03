@@ -29,22 +29,43 @@ A unique budgeting method that transforms coarse monthly budget limits into acti
 ### Key Capabilities:
 - **Daily Spending Limit Formula**:
   $$\text{Daily Limit} = \frac{\text{Monthly Budget} + \text{Rollover Surplus}}{\text{Days in Selected Month}}$$
+- **Streamlined Prorated Quick-Spend Logger (`LogProratedSpendModal.tsx`)**:
+  - Dedicated lightweight spend logger pre-filled with the selected tracker's name, category, and date.
+  - Eliminates the need to navigate through the complex general expense modal for daily prorated spend.
+- **1-Click Prorated Tracker Switcher**:
+  - Switch between trackers (*Snacks & Treats*, *Travel*, *Food*, etc.) with a single click using the **Sidebar Tracker Menu** or the top **Pill Tab Bar**.
 - **Day-by-Day Calendar Ledger**:
   - Displays every day in the month from Day 1 to Day 28/30/31.
-  - Shows date, day of week, individual day spend, daily limit benchmark, cumulative month-to-date total, and current status (`On Track`, `Over Daily Limit`, or `Under Budget`).
+  - Shows date, day of week, individual day spend, daily limit benchmark, cumulative month-to-date total, and current status (`Under Limit`, `Exceeded`, or `No Spend`).
+  - **1-Click Day Log**: Inline `+ Log Spend` button on every row to record daily spend for that specific date.
+  - **1-Click Item Delete**: Delete icon on every listed transaction for instant 1-click removal.
 - **Rollover Surplus Management**:
   - Option to roll over leftover unused budget from the previous month into the current month's allowance pool.
 - **Pacing & Burn Rate Analytics**:
   - Compares **Linear Expected Spend** (`Current Day * Daily Limit`) against **Actual Spend**.
   - Calculates remaining days in the month and projected end-of-month surplus or overspend.
-- **Proactive Threshold Alerts**:
-  - Configurable alert trigger percentages (e.g. 80%, 100%, 120%) that notify the user when daily or cumulative limits are exceeded.
 
 ---
 
-## 3. 💳 Transactions Ledger & CSV Manager (`TransactionsView.tsx`)
+## 3. 📄 PDF & CSV Report Generator (`ExportReportModal.tsx` & `formatters.ts`)
 
-A full-fledged double-entry-style transaction manager with filtering, searching, and bulk data portability.
+Export comprehensive financial statements and raw data.
+
+### Key Capabilities:
+- **Printable PDF Financial Statement**:
+  - Generates a styled, printable HTML statement document with executive cashflow totals, prorated tracker status, and itemized ledger.
+  - Triggers browser `window.print()` for 1-click PDF download or printing.
+- **Multi-Format CSV Exports**:
+  - Monthly Comprehensive Statement CSV.
+  - All Historical Transactions Raw CSV.
+  - Prorated Daily Spending Rules & Rollover CSV.
+  - Savings Goals & Debt Repayment Portfolio CSV.
+
+---
+
+## 4. 💳 Transactions Ledger & CSV Manager (`TransactionsView.tsx`)
+
+A full-fledged transaction manager with filtering, searching, and bulk data portability.
 
 ### Key Capabilities:
 - **Multi-Field Filtering**:
@@ -54,60 +75,31 @@ A full-fledged double-entry-style transaction manager with filtering, searching,
   - Filter by Custom Tags (e.g. `#groceries`, `#coffee_break`, `#fixed`, `#treats`).
 - **Live Search**: Instant real-time filtering across titles, merchant names, amounts, tags, and transaction notes.
 - **Column Sorting**: Sort ascending or descending by Date, Title, Category, or Amount.
-- **Pagination**: Clean, responsive table pagination with configurable items-per-page.
-- **CSV Export**: One-click generation and download of complete transaction statements in RFC 4180 CSV format.
-- **CSV Import**: Upload external bank CSV files with automatic column mapping and validation.
-- **Receipt & Note Attachment**: Optional receipt URL and notes field for every transaction record.
+- **CSV Export & Import**: Bulk CSV export and bank CSV import with column mapping.
 
 ---
 
-## 4. 🔁 Budgets & Recurring Bill Automation (`BudgetsAndRecurringView.tsx`)
+## 5. 🔁 Budgets & Recurring Bill Automation (`BudgetsAndRecurringView.tsx`)
 
 Manage category-level monthly spending limits and automate predictable recurring commitments.
 
 ### Key Capabilities:
 - **Category Monthly Spending Caps**:
-  - Set specific monthly spending allowances for each category (e.g., ₹15,000 for Housing, ₹6,000 for Groceries).
+  - Set specific monthly spending allowances for each category.
   - Visual progress bars showing percentage utilized and remaining balance.
-  - Warning indicators when spending reaches 80% and overspend flags when reaching 100%+.
 - **Recurring Commitment Registry**:
   - Track fixed recurring bills (Rent, Internet, Gym, Cloud Subscriptions, Insurance).
-  - Configure billing frequency (`Monthly`, `Weekly`, `Yearly`), due day of month, payment method, and default tags.
-- **"Apply Recurring for Month" Batch Generator**:
-  - Scans all active recurring items and automatically generates matching transaction records for the active month with a single click.
-  - Skips items that have already been applied for the current month to prevent duplicate entries.
+  - "Apply Recurring for Month" batch generator creates month transactions with one click.
 
 ---
 
-## 5. 🎯 Savings Goals & Debt Payoff Engine (`SavingsAndDebtView.tsx`)
+## 6. 🎯 Savings Goals & Debt Payoff Engine (`SavingsAndDebtView.tsx`)
 
 Track wealth building and debt elimination in a single cohesive view.
 
 ### Key Capabilities:
-- **Savings Milestone Vaults**:
-  - Create targeted savings goals (e.g., Emergency Fund, Vacation, New Laptop, Vehicle Down Payment).
-  - Set target monetary amount and target completion date.
-  - Log incremental deposits or withdrawals with time-stamped audit history.
-  - Interactive confetti celebrations triggered automatically upon reaching 100% of target amount!
-- **Debt & Loan Amortization Portfolio**:
-  - Track student loans, vehicle financing, mortgages, personal loans, and credit card balances.
-  - Track original principal, remaining balance, annual interest rate (APR), and monthly minimum payment.
-  - Log installment payments with automated breakdown between **Principal Reduction** and **Interest Paid**.
-  - Historical payment ledger with notes and dates.
-
----
-
-## 6. 📈 Executive Monthly Performance Reports (`MonthlyReportView.tsx`)
-
-In-depth financial retrospective reports and health indicators for any selected calendar month.
-
-### Key Capabilities:
-- **Executive Summary Box**: High-level overview summarizing total cash inflow, total outflow, net retained capital, and financial savings efficiency.
-- **Burn Rate & Daily Velocity**:
-  - Average daily expenditure throughout the month.
-  - Peak spending day identification and lowest spending day analysis.
-- **Category Allocation Matrix**: Detailed table displaying each category's budget, actual spend, utilization percentage, variance (under/over budget), and percentage share of total monthly expenses.
-- **Audit Export**: Download a full executive financial report summary formatted as a structured CSV document.
+- **Savings Milestone Vaults**: Targeted savings goals with progress tracking and confetti celebrations upon completion.
+- **Debt & Loan Amortization Portfolio**: Track loan balances, APR, minimum payments, and principal vs. interest breakdown.
 
 ---
 
@@ -116,19 +108,15 @@ In-depth financial retrospective reports and health indicators for any selected 
 Configure system preferences, currency formats, and taxonomy.
 
 ### Key Capabilities:
-- **Custom Categories**: Add new spending or income categories with custom names, vector icon selection, color pickers, and default budgets.
-- **Currency Selection**: Switch between **₹ Indian Rupee (Default)**, `$ US Dollar`, `€ Euro`, `£ British Pound`, `¥ Japanese Yen`, `C$ Canadian Dollar`, and `A$ Australian Dollar`.
-- **Threshold Configuration**: Adjust daily budget alert thresholds and monthly warning percentages.
-- **Notification System**: Enable or disable in-app notifications and browser notification prompts.
+- **Custom Categories**: Add new spending or income categories with custom vector icons, colors, and default budgets.
+- **Multi-Currency Support**: Switch between **₹ Indian Rupee (Default)**, `$ US Dollar`, `€ Euro`, `£ British Pound`, `¥ Japanese Yen`, `C$ Canadian Dollar`, and `A$ Australian Dollar`.
 
 ---
 
 ## 8. 🗄️ SQLite Database Manager (`SqliteManagerModal.tsx`)
 
-A database management tool accessible directly from the application header.
+Database management tool accessible directly from the header.
 
 ### Key Capabilities:
-- **Real-Time Storage Telemetry**: Inspect SQLite database engine version, physical file path, binary storage size on disk, and table row counts.
-- **Zero-State Wipe ("Reset All Data to Zero")**: Clears all transactions, savings, debts, and recurring commitments, returning the system to a clean ₹0 slate.
-- **Demo Data Loader ("Load Demo Data")**: One-click population of sample transactions, goals, debts, and prorated rules for demonstrations or testing.
-- **Manual Table Refresh**: Sync memory cache with disk at any time.
+- **Real-Time Storage Telemetry**: Inspect SQLite database engine version, file path, size on disk, and table row counts.
+- **Reset & Demo Loaders**: Reset data to zero or populate demo data with one click.

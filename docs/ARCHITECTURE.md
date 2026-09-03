@@ -75,6 +75,9 @@ The application follows a modern full-stack decoupled architecture running as a 
 │   ├── context/
 │   │   └── ExpenseContext.tsx   # React global state provider, hooks & sync logic
 │   │
+│   ├── features/
+│   │   └── index.ts             # Modular Feature Exports Index
+│   │
 │   ├── data/
 │   │   └── seedData.ts          # Default category catalog & seed data generators
 │   │
@@ -82,10 +85,12 @@ The application follows a modern full-stack decoupled architecture running as a 
 │   │   └── db.ts                # SQLite schema DDL, repository methods & persistence
 │   │
 │   ├── utils/
-│   │   └── formatters.ts        # Currency (en-IN / en-US), dates, CSV generators
+│   │   ├── budgetCalculations.ts# Daily breakdown math, alerts, trajectory math
+│   │   └── formatters.ts        # Currency (en-IN / en-US), dates, CSV & PDF generators
 │   │
 │   └── components/
 │       ├── Navbar.tsx           # Navigation bar, quick-add buttons & currency switcher
+│       ├── Sidebar.tsx          # Sidebar with 1-click tracker switcher & cashflow stats
 │       │
 │       ├── views/               # Primary screen views
 │       │   ├── DashboardView.tsx          # Executive dashboard, KPIs, charts
@@ -97,13 +102,13 @@ The application follows a modern full-stack decoupled architecture running as a 
 │       │   └── CategorySettingsView.tsx   # Custom category manager & system options
 │       │
 │       └── modals/              # Action modals
+│           ├── LogProratedSpendModal.tsx  # Streamlined 1-click prorated spend logger
 │           ├── AddTransactionModal.tsx    # Transaction creator / editor
-│           ├── AddProratedRuleModal.tsx   # Prorated rule creator / editor
+│           ├── AddProratedBudgetModal.tsx # Prorated rule creator / editor
 │           ├── AddSavingsGoalModal.tsx    # Savings goal creator / deposit logger
 │           ├── AddDebtModal.tsx           # Debt portfolio creator / payment logger
-│           ├── AddRecurringModal.tsx      # Recurring bill creator / editor
-│           ├── CategoryModal.tsx          # Custom category creator
-│           ├── CsvImportExportModal.tsx   # Transaction bulk CSV import & export
+│           ├── AddCategoryModal.tsx       # Custom category creator
+│           ├── ExportReportModal.tsx      # Transaction bulk CSV & PDF statement export
 │           ├── SqliteManagerModal.tsx     # Database table inspector & zero-reset
 │           └── NotificationCenterModal.tsx# In-app budget warning alerts
 ```

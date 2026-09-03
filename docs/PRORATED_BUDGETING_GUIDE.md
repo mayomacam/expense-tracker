@@ -105,3 +105,16 @@ The system continuously evaluates alert conditions:
 | **Variance** | $A_k - E_k$ | Net surplus or deficit |
 | **Adjusted Allowance** | $(B_{\text{total}} - A_k) / (D_m - k)$ | Rebalanced daily budget for remainder of month |
 | **Utilization Rate** | $(A_k / B_{\text{total}}) \times 100\%$ | Total monthly budget consumption |
+
+---
+
+## 6. Streamlined Prorated Quick Spend Logger & Switcher
+
+To ensure zero friction when logging prorated daily spend:
+
+1. **`LogProratedSpendModal.tsx`**:
+   - Opens pre-filled with the active tracker's name, category, and daily target.
+   - Accepts simple **Amount** and optional **Description** to log spend in 1 click.
+2. **1-Click Tracker Switcher**:
+   - Switch between prorated trackers (*Snacks & Treats*, *Travel*, *Food*, etc.) with a single click using the **Sidebar Menu** or the top **Pill Tab Bar**.
+
