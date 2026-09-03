@@ -1,4 +1,4 @@
-import { Transaction, Category, ProratedBudgetRule } from '../types';
+import { Transaction, Category, ProratedBudgetRule, SavingsGoal, DebtItem } from '../types';
 
 export function formatCurrency(amount: number, symbol: string = '₹'): string {
   const isNegative = amount < 0;
@@ -8,7 +8,6 @@ export function formatCurrency(amount: number, symbol: string = '₹'): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(absAmount);
-
   return `${isNegative ? '-' : ''}${symbol}${formatted}`;
 }
 
@@ -21,7 +20,6 @@ export function formatNumber(amount: number): string {
 
 export function getDaysInMonth(yearMonth: string): number {
   const [year, month] = yearMonth.split('-').map(Number);
-  // month is 1-indexed in "YYYY-MM", passing month directly to Date(year, month, 0) gives last day of that month
   return new Date(year, month, 0).getDate();
 }
 
@@ -56,16 +54,9 @@ export function formatReadableDate(dateString: string): string {
   if (!dateString) return '';
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-/**
- * Trigger browser file download of CSV data
- */
 export function downloadCSV(csvContent: string, fileName: string): void {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -79,17 +70,24 @@ export function downloadCSV(csvContent: string, fileName: string): void {
   URL.revokeObjectURL(url);
 }
 
-/**
- * Convert Transactions to CSV
- */
 export function generateTransactionsCSV(
   transactions: Transaction[],
   categories: Category[],
   currency: string = '₹'
 ): string {
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
-
-  const headers = ['Date', 'Title', 'Type', 'Category', 'Amount', 'Currency', 'Payment Method', 'Tags', 'Notes', 'Recurring'];
+  const headers = [
+    'Date',
+    'Title',
+    'Type',
+    'Category',
+    'Amount',
+    'Currency',
+    'Payment Method',
+    'Tags',
+    'Notes',
+    'Recurring',
+  ];
 
   const rows = transactions.map((t) => {
     const catName = categoryMap.get(t.category) || t.category;
@@ -113,9 +111,6 @@ export function generateTransactionsCSV(
   return [headers.join(','), ...rows].join('\n');
 }
 
-/**
- * Generate Comprehensive Monthly Financial Statement CSV
- */
 export function generateMonthlyReportCSV(
   month: string,
   transactions: Transaction[],
@@ -159,20 +154,23 @@ export function generateMonthlyReportCSV(
   lines.push(`Net Savings,${currency}${netSavings.toFixed(2)}`);
   lines.push(`Savings Rate,${savingsRate}%`);
   lines.push('');
-
   lines.push('--- CATEGORY BREAKDOWN ---');
   lines.push('Category,Allocated Budget,Actual Spent,Remaining / Over,Status');
+
   Object.entries(categorySpending).forEach(([catId, data]) => {
     const cat = categoryMap.get(catId);
     const catName = cat ? cat.name : catId;
     const diff = data.budget > 0 ? data.budget - data.spent : 0;
     const status = data.budget === 0 ? 'No Budget' : diff >= 0 ? 'Within Budget' : 'OVER BUDGET';
-    lines.push(`"${catName}",${data.budget.toFixed(2)},${data.spent.toFixed(2)},${diff.toFixed(2)},${status}`);
+    lines.push(
+      `"${catName}",${data.budget.toFixed(2)},${data.spent.toFixed(2)},${diff.toFixed(2)},${status}`
+    );
   });
 
   lines.push('');
   lines.push('--- PRORATED DAILY SPEND TRACKERS ---');
   lines.push('Item/Rule Name,Monthly Max Spend,Daily Prorated Limit,Days In Month,Total Spent,Status');
+
   const daysInMon = getDaysInMonth(month);
   proratedRules.forEach((rule) => {
     const dailyLimit = (rule.monthlyMaxSpend + (rule.rolloverAmount || 0)) / daysInMon;
@@ -186,12 +184,15 @@ export function generateMonthlyReportCSV(
     const totalSpent = ruleTransactions.reduce((sum, t) => sum + t.amount, 0);
     const effBudget = rule.monthlyMaxSpend + (rule.rolloverAmount || 0);
     const status = totalSpent <= effBudget ? 'Within Budget' : 'Exceeded';
-    lines.push(`"${rule.name}",${effBudget.toFixed(2)},${dailyLimit.toFixed(2)},${daysInMon},${totalSpent.toFixed(2)},${status}`);
+    lines.push(
+      `"${rule.name}",${effBudget.toFixed(2)},${dailyLimit.toFixed(2)},${daysInMon},${totalSpent.toFixed(2)},${status}`
+    );
   });
 
   lines.push('');
   lines.push('--- ITEMIZED TRANSACTIONS FOR MONTH ---');
   lines.push('Date,Title,Type,Category,Amount,Payment Method,Tags,Notes');
+
   monthTransactions.forEach((t) => {
     const catName = categoryMap.get(t.category)?.name || t.category;
     lines.push(
@@ -202,16 +203,13 @@ export function generateMonthlyReportCSV(
   return lines.join('\n');
 }
 
-/**
- * Generate Printable PDF Financial Statement Window
- */
 export function generatePDFReportWindow(
   month: string,
   transactions: Transaction[],
   categories: Category[],
   proratedRules: ProratedBudgetRule[],
-  savingsGoals: any[] = [],
-  debts: any[] = [],
+  savingsGoals: SavingsGoal[] = [],
+  debts: DebtItem[] = [],
   currency: string = '₹'
 ): void {
   const monthName = getMonthName(month);
@@ -221,11 +219,9 @@ export function generatePDFReportWindow(
   const totalIncome = monthTxs
     .filter((t) => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
-
   const totalExpense = monthTxs
     .filter((t) => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
-
   const netBalance = totalIncome - totalExpense;
 
   const html = `
@@ -290,44 +286,54 @@ export function generatePDFReportWindow(
             </tr>
           </thead>
           <tbody>
-            ${proratedRules.map((r) => {
-              const ruleSpent = monthTxs
-                .filter((t) => t.category === r.categoryId || t.title.toLowerCase().includes(r.name.toLowerCase()))
-                .reduce((s, t) => s + t.amount, 0);
-              return `
+            ${proratedRules
+              .map((rule) => {
+                const daysInMon = getDaysInMonth(month);
+                const dailyLimit = (rule.monthlyMaxSpend + (rule.rolloverAmount || 0)) / daysInMon;
+                const spent = monthTxs
+                  .filter((t) => t.type === 'expense' && t.category === rule.categoryId)
+                  .reduce((sum, t) => sum + t.amount, 0);
+                const eff = rule.monthlyMaxSpend + (rule.rolloverAmount || 0);
+                return `
                 <tr>
-                  <td><strong>${r.name}</strong></td>
-                  <td>${formatCurrency(r.monthlyMaxSpend, currency)}</td>
-                  <td>${formatCurrency(r.monthlyMaxSpend / 30, currency)}/day</td>
-                  <td>${formatCurrency(ruleSpent, currency)}</td>
-                  <td>${ruleSpent > r.monthlyMaxSpend ? '<span style="color:#c62828">Exceeded</span>' : '<span style="color:#2e7d32">On Track</span>'}</td>
+                  <td><strong>${rule.name}</strong></td>
+                  <td>${formatCurrency(eff, currency)}</td>
+                  <td>${formatCurrency(dailyLimit, currency)}/day</td>
+                  <td>${formatCurrency(spent, currency)}</td>
+                  <td>${spent <= eff ? 'Within Budget' : 'Exceeded'}</td>
                 </tr>
               `;
-            }).join('')}
+              })
+              .join('')}
           </tbody>
         </table>
 
-        <h3>Itemized Transactions (${monthTxs.length})</h3>
+        <h3>Recent Transactions (${monthName})</h3>
         <table>
           <thead>
             <tr>
               <th>Date</th>
-              <th>Title / Description</th>
-              <th>Type</th>
+              <th>Title</th>
               <th>Category</th>
+              <th>Type</th>
               <th>Amount</th>
             </tr>
           </thead>
           <tbody>
-            ${monthTxs.map((t) => `
+            ${monthTxs
+              .slice(0, 30)
+              .map(
+                (t) => `
               <tr>
                 <td>${t.date}</td>
                 <td>${t.title}</td>
-                <td>${t.type.toUpperCase()}</td>
                 <td>${categoryMap.get(t.category) || t.category}</td>
+                <td>${t.type.toUpperCase()}</td>
                 <td><strong>${formatCurrency(t.amount, currency)}</strong></td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join('')}
           </tbody>
         </table>
 

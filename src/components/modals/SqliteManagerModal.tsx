@@ -1,18 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import {
-  Database,
-  X,
-  RefreshCw,
-  HardDrive,
-  Table,
-  CheckCircle2,
-  AlertTriangle,
-  RotateCcw,
-  Layers,
-  Sparkles,
-  Server,
-} from 'lucide-react';
+import { X, Database, RefreshCw, Trash2, CheckCircle2 } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
 
 interface SqliteManagerModalProps {
@@ -20,266 +7,138 @@ interface SqliteManagerModalProps {
   onClose: () => void;
 }
 
-export const SqliteManagerModal: React.FC<SqliteManagerModalProps> = ({
-  isOpen,
-  onClose,
-}) => {
-  const {
-    dbStats,
-    dbStatus,
-    isDbSyncing,
-    refreshFromDb,
-    resetToDefaultData,
-    resetAllDataToZero,
-    loadDemoDataset,
-    transactions,
-    categories,
-    proratedRules,
-    savingsGoals,
-    debts,
-    recurring,
-  } = useExpense();
-
-  const [isResetting, setIsResetting] = useState(false);
-  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+export const SqliteManagerModal: React.FC<SqliteManagerModalProps> = ({ isOpen, onClose }) => {
+  const { dbStatus, refreshFromDb, resetToZero, loadDemoData, isLoading } = useExpense();
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleManualSync = async () => {
-    setIsRefreshing(true);
-    await refreshFromDb();
-    setTimeout(() => setIsRefreshing(false), 500);
-  };
-
   const handleResetToZero = async () => {
-    if (
-      !window.confirm(
-        'Are you sure you want to reset all data to zero? This will wipe all fake transactions, goals, debts, and recurring items, starting with a clean slate.'
-      )
-    ) {
-      return;
+    if (!window.confirm('Reset database to clean zero records? This wipes all sample data.')) return;
+    try {
+      await resetToZero();
+      setActionMessage('Database wiped clean to zero records.');
+      setTimeout(() => setActionMessage(null), 4000);
+    } catch (err: any) {
+      alert('Error resetting database: ' + err.message);
     }
-    setIsResetting(true);
-    await resetAllDataToZero();
-    setIsResetting(false);
-    setResetSuccess('All data reset to zero successfully!');
-    setTimeout(() => setResetSuccess(null), 3500);
   };
 
   const handleLoadDemo = async () => {
-    if (
-      !window.confirm(
-        'Load the sample demo dataset? This will populate sample transactions, goals, and recurring items for testing.'
-      )
-    ) {
-      return;
+    try {
+      await loadDemoData();
+      setActionMessage('Demo dataset populated into SQLite.');
+      setTimeout(() => setActionMessage(null), 4000);
+    } catch (err: any) {
+      alert('Error loading demo: ' + err.message);
     }
-    setIsResetting(true);
-    await loadDemoDataset();
-    setIsResetting(false);
-    setResetSuccess('Demo sample dataset loaded successfully!');
-    setTimeout(() => setResetSuccess(null), 3500);
   };
 
-  const tableRows = [
-    { name: 'transactions', label: 'Transactions', count: dbStats?.tables?.transactions ?? transactions.length, icon: Layers },
-    { name: 'categories', label: 'Categories', count: dbStats?.tables?.categories ?? categories.length, icon: Table },
-    { name: 'prorated_rules', label: 'Prorated Rules', count: dbStats?.tables?.prorated_rules ?? proratedRules.length, icon: Table },
-    { name: 'savings_goals', label: 'Savings Goals', count: dbStats?.tables?.savings_goals ?? savingsGoals.length, icon: Table },
-    { name: 'debts', label: 'Debts & Loans', count: dbStats?.tables?.debts ?? debts.length, icon: Table },
-    { name: 'recurring_items', label: 'Recurring Items', count: dbStats?.tables?.recurring_items ?? recurring.length, icon: Table },
-  ];
-
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="w-full max-w-lg bg-[#111114] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md font-mono"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#c1ff72] text-black flex items-center justify-center font-bold shadow-[0_0_10px_rgba(193,255,114,0.3)]">
-                <Database className="w-4 h-4 text-black" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-extrabold text-white tracking-tight">
-                    SQLite Database Engine
-                  </h3>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#c1ff72]/20 text-[#c1ff72] border border-[#c1ff72]/30 uppercase font-bold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#c1ff72] animate-pulse" />
-                    LIVE CRUD
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-400">
-                  Full relational SQLite storage with disk persistence
-                </p>
-              </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-xs" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-[#16161a] border border-[#27272a] rounded-xl p-5 z-10 shadow-xl">
+        <div className="flex items-center justify-between pb-3 border-b border-[#27272a]">
+          <div className="flex items-center gap-2">
+            <Database className="w-5 h-5 text-[#c1ff72]" />
+            <div>
+              <h2 className="text-base font-semibold text-white">SQLite Database Status</h2>
+              <p className="text-xs text-zinc-400">WASM Engine + Persistent File Storage</p>
             </div>
-            <button
-              id="close-sqlite-modal-btn"
-              onClick={onClose}
-              className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {actionMessage && (
+          <div className="mt-3 p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs rounded-lg flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{actionMessage}</span>
+          </div>
+        )}
+
+        <div className="mt-4 space-y-4">
+          <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-lg space-y-2 text-xs">
+            <div className="flex justify-between">
+              <span className="text-zinc-400">Engine</span>
+              <span className="text-zinc-200 font-medium">{dbStatus?.engine || 'SQLite (sql.js)'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-400">Database File</span>
+              <span className="text-zinc-200 font-mono text-[11px]">{dbStatus?.databaseFile || 'data/budget.sqlite'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-400">File Size</span>
+              <span className="text-zinc-200 font-medium">{dbStatus?.fileSizeKb || 0} KB</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-400">Engine Status</span>
+              <span className="text-emerald-400 font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Online &amp; Persisting
+              </span>
+            </div>
           </div>
 
-          <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-            {/* Engine Overview Card */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Server className="w-4 h-4 text-[#c1ff72]" />
-                  <span className="text-xs font-bold text-white">Database Engine</span>
-                </div>
-                <span className="text-xs font-mono text-[#c1ff72]">
-                  {dbStats?.engine || 'SQLite (sql.js)'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-zinc-400 border-t border-white/[0.04] pt-2">
-                <div className="flex items-center gap-2">
-                  <HardDrive className="w-3.5 h-3.5 text-zinc-500" />
-                  <span>Storage File:</span>
-                </div>
-                <span className="font-mono text-zinc-200">
-                  {dbStats?.databaseFile || 'data/budget.sqlite'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-zinc-400 border-t border-white/[0.04] pt-2">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Status & Connectivity:</span>
-                </div>
-                <span className="font-mono text-[#c1ff72] font-semibold uppercase text-[11px]">
-                  {dbStatus === 'connected' ? '● Connected & Synchronized' : '● Connecting...'}
-                </span>
-              </div>
-            </div>
-
-            {/* Tables & Record Counts */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                  Database Tables & Record Counts
-                </span>
-                <button
-                  type="button"
-                  id="sync-sqlite-now-btn"
-                  onClick={handleManualSync}
-                  disabled={isRefreshing || isDbSyncing}
-                  className="text-xs text-[#c1ff72] hover:text-[#b0f05f] flex items-center gap-1 uppercase font-semibold"
-                >
-                  <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  {isRefreshing ? 'Syncing...' : 'Sync Now'}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                {tableRows.map((tbl) => {
-                  const Icon = tbl.icon;
-                  return (
-                    <div
-                      key={tbl.name}
-                      className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-3.5 h-3.5 text-zinc-500" />
-                        <span className="text-xs font-medium text-zinc-300">{tbl.label}</span>
-                      </div>
-                      <span className="text-xs font-bold font-mono text-[#c1ff72] bg-[#c1ff72]/10 px-2 py-0.5 rounded border border-[#c1ff72]/20">
-                        {tbl.count} rows
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* CRUD Guarantee info */}
-            <div className="p-3.5 rounded-xl bg-[#c1ff72]/5 border border-[#c1ff72]/20 text-xs space-y-1">
-              <div className="flex items-center gap-1.5 font-bold text-[#c1ff72]">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Full CRUD Capability Active</span>
-              </div>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
-                All Create, Read, Update, and Delete operations for Transactions, Categories, Prorated Rules, Savings, Debts, and Recurring Bills are executed via RESTful endpoints directly into the SQLite database.
-              </p>
-            </div>
-
-            {/* Reset Database Section */}
-            <div className="pt-3 border-t border-white/[0.06] space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                    Reset All Data to Zero (Clean Slate)
-                  </h4>
-                  <p className="text-[11px] text-zinc-400">
-                    Wipe all fake transactions, goals, debts & start fresh with ₹0 balances
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  id="reset-to-zero-db-btn"
-                  onClick={handleResetToZero}
-                  disabled={isResetting}
-                  className="px-3 py-1.5 text-xs font-bold text-[#ff5f5f] hover:text-white hover:bg-[#ff5f5f]/20 border border-[#ff5f5f]/30 rounded-xl transition-all flex items-center gap-1.5 uppercase tracking-wider"
-                >
-                  <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
-                  {isResetting ? 'Resetting...' : 'Reset to Zero'}
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
-                <div>
-                  <h5 className="text-[11px] font-bold text-zinc-300">
-                    Demo Sample Data (Optional)
-                  </h5>
-                  <p className="text-[10px] text-zinc-500">
-                    Populate sample transactions for testing charts & features
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  id="load-demo-db-btn"
-                  onClick={handleLoadDemo}
-                  disabled={isResetting}
-                  className="px-3 py-1 text-[11px] font-bold text-zinc-300 hover:text-white hover:bg-white/10 border border-white/10 rounded-xl transition-all uppercase tracking-wider"
-                >
-                  Load Demo Data
-                </button>
-              </div>
-
-              {resetSuccess && (
-                <div className="mt-2 p-2 rounded-lg bg-[#c1ff72]/10 border border-[#c1ff72]/30 text-[11px] text-[#c1ff72] flex items-center gap-1.5 font-bold">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  {resetSuccess}
-                </div>
+          <div>
+            <h4 className="text-xs font-semibold text-zinc-300 mb-2">Table Record Counts</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {dbStatus?.tables ? (
+                Object.entries(dbStatus.tables).map(([table, count]) => (
+                  <div
+                    key={table}
+                    className="p-2 bg-zinc-900/60 border border-zinc-800 rounded-lg flex justify-between items-center"
+                  >
+                    <span className="text-zinc-400 capitalize">{table.replace('_', ' ')}</span>
+                    <span className="font-semibold text-white">{String(count)}</span>
+                  </div>
+                ))
+              ) : (
+                <span className="text-zinc-500 col-span-2">No table stats available</span>
               )}
             </div>
+          </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-end pt-3 border-t border-white/[0.06]">
+          <div className="pt-2 border-t border-[#27272a] space-y-2">
+            <div className="flex gap-2">
               <button
                 type="button"
-                id="close-sqlite-bottom-btn"
-                onClick={onClose}
-                className="px-5 py-2 text-xs font-bold text-black bg-[#c1ff72] hover:bg-[#b0f05f] rounded-xl shadow-[0_0_15px_rgba(193,255,114,0.3)] transition-all uppercase tracking-wider"
+                onClick={handleLoadDemo}
+                disabled={isLoading}
+                className="flex-1 py-2 text-xs font-medium text-zinc-200 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors flex items-center justify-center gap-1.5"
               >
-                Done
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>Load Demo Dataset</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetToZero}
+                disabled={isLoading}
+                className="flex-1 py-2 text-xs font-medium text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Reset to Zero</span>
               </button>
             </div>
           </div>
-        </motion.div>
+        </div>
+
+        <div className="pt-4 border-t border-[#27272a] mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
+          >
+            Close
+          </button>
+        </div>
       </div>
-    </AnimatePresence>
+    </div>
   );
 };

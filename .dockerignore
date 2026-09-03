@@ -1,8 +1,36 @@
-node_modules
-dist
-.antigravity
-.vscode
+# Git
 .git
 .gitignore
-*.log
-*.bak
+
+# Node dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.cert
+
+# Build artifacts and temp files
+dist
+build
+.cache
+/tmp
+*.sqlite-journal
+
+# Editor and OS files
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db

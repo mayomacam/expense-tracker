@@ -1,683 +1,415 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Transaction,
   Category,
   ProratedBudgetRule,
   SavingsGoal,
+  SavingsHistoryItem,
   DebtItem,
+  DebtPaymentItem,
   RecurringItem,
-  BudgetAlert,
   UserSettings,
+  NotificationAlert,
 } from '../types';
-import { getInitialSeedData } from '../data/seedData';
-import { evaluateAllAlerts } from '../utils/budgetCalculations';
-import { getCurrentYearMonth } from '../utils/formatters';
-import { api, DatabaseStats } from '../api/client';
+import { api } from '../api/client';
+import { calculateProratedRule } from '../utils/budgetCalculations';
 
 interface ExpenseContextType {
   transactions: Transaction[];
+  deletedTransactions: Transaction[];
   categories: Category[];
   proratedRules: ProratedBudgetRule[];
   savingsGoals: SavingsGoal[];
   debts: DebtItem[];
-  recurring: RecurringItem[];
-  alerts: BudgetAlert[];
-  unreadAlertCount: number;
+  recurringItems: RecurringItem[];
   settings: UserSettings;
-  selectedMonth: string;
-  setSelectedMonth: (month: string) => void;
+  readAlertIds: string[];
+  alerts: NotificationAlert[];
+  unreadAlertCount: number;
+  isLoading: boolean;
+  error: string | null;
+  dbStatus: any;
 
-  // SQLite Database Info
-  dbStats: DatabaseStats | null;
-  isDbSyncing: boolean;
-  dbStatus: 'connected' | 'syncing' | 'offline';
   refreshFromDb: () => Promise<void>;
 
-  // Transaction Actions (SQLite CRUD)
-  deletedTransactions: Transaction[];
+  // Transactions
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<Transaction>;
   updateTransaction: (id: string, tx: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  bulkImportTransactions: (txs: Omit<Transaction, 'id'>[]) => Promise<void>;
+
+  // Deleted Transactions
   restoreTransaction: (id: string) => Promise<void>;
   emptyTrash: () => Promise<void>;
-  importTransactions: (txs: Transaction[]) => Promise<void>;
 
-  // Category Actions (SQLite CRUD)
+  // Categories
   addCategory: (cat: Omit<Category, 'id'>) => Promise<Category>;
   updateCategory: (id: string, cat: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
 
-  // Prorated Budget Rule Actions (SQLite CRUD)
+  // Prorated Rules
   addProratedRule: (rule: Omit<ProratedBudgetRule, 'id'>) => Promise<ProratedBudgetRule>;
   updateProratedRule: (id: string, rule: Partial<ProratedBudgetRule>) => Promise<void>;
   deleteProratedRule: (id: string) => Promise<void>;
 
-  // Savings Goal Actions (SQLite CRUD)
+  // Savings Goals
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'currentAmount' | 'history'>) => Promise<SavingsGoal>;
   updateSavingsGoal: (id: string, goal: Partial<SavingsGoal>) => Promise<void>;
   deleteSavingsGoal: (id: string) => Promise<void>;
-  addSavingsContribution: (goalId: string, amount: number, note?: string, type?: 'deposit' | 'withdrawal') => Promise<void>;
+  addSavingsContribution: (goalId: string, item: Omit<SavingsHistoryItem, 'id'>) => Promise<void>;
 
-  // Debt Actions (SQLite CRUD)
+  // Debts
   addDebt: (debt: Omit<DebtItem, 'id' | 'remainingBalance' | 'payments'>) => Promise<DebtItem>;
   updateDebt: (id: string, debt: Partial<DebtItem>) => Promise<void>;
   deleteDebt: (id: string) => Promise<void>;
-  recordDebtPayment: (debtId: string, amount: number, note?: string) => Promise<void>;
+  recordDebtPayment: (debtId: string, payment: Omit<DebtPaymentItem, 'id'>) => Promise<void>;
 
-  // Recurring Actions (SQLite CRUD)
+  // Recurring Items
   addRecurringItem: (item: Omit<RecurringItem, 'id'>) => Promise<RecurringItem>;
   updateRecurringItem: (id: string, item: Partial<RecurringItem>) => Promise<void>;
   deleteRecurringItem: (id: string) => Promise<void>;
-  applyRecurringForMonth: (month: string) => Promise<{ addedCount: number }>;
+  applyRecurringForMonth: (month?: string) => Promise<number>;
 
-  // Alert Actions
-  markAlertAsRead: (alertId: string) => void;
-  markAllAlertsAsRead: () => void;
-  clearAlerts: () => void;
-  triggerTestNotification: (title?: string, message?: string) => void;
+  // Settings
+  updateSettings: (updates: Partial<UserSettings>) => Promise<void>;
 
-  // Settings Actions
-  updateSettings: (newSettings: Partial<UserSettings>) => Promise<void>;
-  resetToDefaultData: () => Promise<void>;
+  // Alerts
+  markAlertRead: (id: string) => Promise<void>;
+  markAllAlertsRead: () => Promise<void>;
+  clearReadAlerts: () => Promise<void>;
+
+  // Database actions
+  resetToZero: () => Promise<void>;
   resetAllDataToZero: () => Promise<void>;
-  loadDemoDataset: () => Promise<void>;
-
-  // Tags
-  allTags: string[];
+  loadDemoData: () => Promise<void>;
 }
 
-const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
+const ExpenseContext = createContext<ExpenseContextType | null>(null);
 
-export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const seed = useMemo(() => getInitialSeedData(), []);
-
-  const [transactions, setTransactions] = useState<Transaction[]>(seed.transactions);
-  const [categories, setCategories] = useState<Category[]>(seed.categories);
-  const [proratedRules, setProratedRules] = useState<ProratedBudgetRule[]>(seed.proratedRules);
-  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>(seed.savingsGoals);
-  const [debts, setDebts] = useState<DebtItem[]>(seed.debts);
-  const [recurring, setRecurring] = useState<RecurringItem[]>(seed.recurring);
-  const [settings, setSettings] = useState<UserSettings>(seed.settings);
-  const [readAlertIds, setReadAlertIds] = useState<string[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<string>(seed.settings.selectedMonth || getCurrentYearMonth());
-
-  // Database status states
-  const [dbStats, setDbStats] = useState<DatabaseStats | null>(null);
-  const [isDbSyncing, setIsDbSyncing] = useState<boolean>(true);
-  const [dbStatus, setDbStatus] = useState<'connected' | 'syncing' | 'offline'>('syncing');
-
+export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [deletedTransactions, setDeletedTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [proratedRules, setProratedRules] = useState<ProratedBudgetRule[]>([]);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [debts, setDebts] = useState<DebtItem[]>([]);
+  const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
+  const [settings, setSettings] = useState<UserSettings>({
+    currency: '₹',
+    currencyCode: 'INR',
+    pushNotificationsEnabled: true,
+    dailyBudgetAlertThreshold: 100,
+    monthlyBudgetWarningThreshold: 80,
+    enableRolloverByDefault: true,
+    selectedMonth: new Date().toISOString().slice(0, 7),
+    userName: 'Financial Explorer',
+  });
+  const [readAlertIds, setReadAlertIds] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dbStatus, setDbStatus] = useState<any>(null);
 
-  // Load all data from SQLite database on initial render
   const refreshFromDb = useCallback(async () => {
-    setIsDbSyncing(true);
     try {
-      const [
-        txData,
-        deletedData,
-        catData,
-        rulesData,
-        savingsData,
-        debtsData,
-        recData,
-        settingsData,
-        readAlertsData,
-        statsData,
-      ] = await Promise.all([
-        api.getTransactions().catch(() => seed.transactions),
+      setIsLoading(true);
+      setError(null);
+      const [txs, delTxs, cats, rules, goals, dbs, recs, sets, readIds, status] = await Promise.all([
+        api.getTransactions().catch(() => []),
         api.getDeletedTransactions().catch(() => []),
-        api.getCategories().catch(() => seed.categories),
-        api.getProratedRules().catch(() => seed.proratedRules),
-        api.getSavingsGoals().catch(() => seed.savingsGoals),
-        api.getDebts().catch(() => seed.debts),
-        api.getRecurring().catch(() => seed.recurring),
-        api.getSettings().catch(() => seed.settings),
+        api.getCategories().catch(() => []),
+        api.getProratedRules().catch(() => []),
+        api.getSavingsGoals().catch(() => []),
+        api.getDebts().catch(() => []),
+        api.getRecurring().catch(() => []),
+        api.getSettings().catch(() => ({
+          currency: '₹',
+          currencyCode: 'INR',
+          pushNotificationsEnabled: true,
+          dailyBudgetAlertThreshold: 100,
+          monthlyBudgetWarningThreshold: 80,
+          enableRolloverByDefault: true,
+          selectedMonth: new Date().toISOString().slice(0, 7),
+          userName: 'Financial Explorer',
+        })),
         api.getReadAlerts().catch(() => []),
-        api.getDbStats().catch(() => null),
+        api.getDbStatus().catch(() => null),
       ]);
 
-      setTransactions(txData);
-      setDeletedTransactions(deletedData);
-      setCategories(catData);
-      setProratedRules(rulesData);
-      setSavingsGoals(savingsData);
-      setDebts(debtsData);
-      setRecurring(recData);
-      setSettings(settingsData);
-      setReadAlertIds(readAlertsData);
-      if (settingsData.selectedMonth) {
-        setSelectedMonth(settingsData.selectedMonth);
-      }
-      setDbStats(statsData);
-      setDbStatus('connected');
-    } catch (err) {
-      console.error('Error syncing with SQLite database:', err);
-      setDbStatus('offline');
+      setTransactions(txs);
+      setDeletedTransactions(delTxs);
+      setCategories(cats);
+      setProratedRules(rules);
+      setSavingsGoals(goals);
+      setDebts(dbs);
+      setRecurringItems(recs);
+      setSettings(sets);
+      setReadAlertIds(readIds);
+      setDbStatus(status);
+    } catch (err: any) {
+      console.error('Error refreshing from SQLite DB:', err);
+      setError(err.message || 'Failed to sync with local database');
     } finally {
-      setIsDbSyncing(false);
+      setIsLoading(false);
     }
-  }, [seed]);
+  }, []);
 
   useEffect(() => {
     refreshFromDb();
   }, [refreshFromDb]);
 
-  // Request browser notification permission if enabled
-  useEffect(() => {
-    if (settings.pushNotificationsEnabled && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        Notification.requestPermission();
-      }
-    }
-  }, [settings.pushNotificationsEnabled]);
+  // Derived Alerts
+  const alerts = useMemo<NotificationAlert[]>(() => {
+    const list: NotificationAlert[] = [];
+    const targetDate = new Date();
+    const currentMonth = settings.selectedMonth || new Date().toISOString().slice(0, 7);
 
-  // Derive dynamic alerts based on live state
-  const alerts: BudgetAlert[] = useMemo(() => {
-    const rawAlerts = evaluateAllAlerts(
-      transactions,
-      categories,
-      proratedRules,
-      recurring,
-      debts,
-      savingsGoals,
-      settings,
-      selectedMonth
-    );
+    // Prorated rules alerts
+    for (const rule of proratedRules) {
+      if (rule.month && rule.month !== currentMonth) continue;
+      const calc = calculateProratedRule(rule, transactions, targetDate);
 
-    return rawAlerts.map((alert) => ({
-      ...alert,
-      read: readAlertIds.includes(alert.id),
-    }));
-  }, [
-    transactions,
-    categories,
-    proratedRules,
-    recurring,
-    debts,
-    savingsGoals,
-    settings,
-    selectedMonth,
-    readAlertIds,
-  ]);
-
-  const unreadAlertCount = useMemo(() => {
-    return alerts.filter((a) => !a.read).length;
-  }, [alerts]);
-
-  // All distinct tags
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    transactions.forEach((t) => (t.tags || []).forEach((tag) => tagSet.add(tag)));
-    recurring.forEach((r) => (r.tags || []).forEach((tag) => tagSet.add(tag)));
-    return Array.from(tagSet).sort();
-  }, [transactions, recurring]);
-
-  // ================= TRANSACTION CRUD =================
-  const addTransaction = async (tx: Omit<Transaction, 'id'>): Promise<Transaction> => {
-    const tempId = `tx-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    const newTx: Transaction = { ...tx, id: tempId };
-
-    // Auto switch selectedMonth if adding transaction to a different month
-    const txMonth = tx.date ? tx.date.substring(0, 7) : selectedMonth;
-    if (txMonth && txMonth !== selectedMonth) {
-      setSettings((prev) => ({ ...prev, selectedMonth: txMonth }));
-      api.updateSettings({ selectedMonth: txMonth }).catch(() => {});
-    }
-    // Optimistic update
-    setTransactions((prev) => [newTx, ...prev]);
-
-    // Persist to SQLite
-    try {
-      const created = await api.createTransaction(newTx);
-      setTransactions((prev) => prev.map((t) => (t.id === tempId ? created : t)));
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error persisting transaction to SQLite:', e);
-    }
-
-    // Push notification check
-    if (settings.pushNotificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
-      const categoryObj = categories.find((c) => c.id === tx.category);
-      if (tx.type === 'expense' && tx.amount > 50) {
-        new Notification(`Logged Expense: ${tx.title}`, {
-          body: `Spent ${settings.currency}${tx.amount.toFixed(2)} under ${categoryObj?.name || 'General'}.`,
+      if (calc.status === 'overspent') {
+        list.push({
+          id: `alert-rule-over-${rule.id}`,
+          title: `Over Budget: ${rule.name}`,
+          message: `You exceeded the monthly budget limit by ${settings.currency}${calc.isOverBudget.toFixed(2)}.`,
+          type: 'danger',
+          date: new Date().toISOString().slice(0, 10),
+          isRead: readAlertIds.includes(`alert-rule-over-${rule.id}`),
+        });
+      } else if (calc.status === 'danger') {
+        list.push({
+          id: `alert-rule-danger-${rule.id}`,
+          title: `Budget Alert: ${rule.name}`,
+          message: `You reached ${calc.percentSpent.toFixed(0)}% of your limit (${settings.currency}${calc.totalSpent.toFixed(2)} / ${settings.currency}${calc.effectiveBudget.toFixed(2)}).`,
+          type: 'warning',
+          date: new Date().toISOString().slice(0, 10),
+          isRead: readAlertIds.includes(`alert-rule-danger-${rule.id}`),
         });
       }
     }
 
-    return newTx;
+    // Category monthly budget alerts
+    const monthlyExpenses = transactions.filter((t) => t.type === 'expense' && t.date.startsWith(currentMonth));
+    const catSpentMap: Record<string, number> = {};
+    for (const tx of monthlyExpenses) {
+      catSpentMap[tx.category] = (catSpentMap[tx.category] || 0) + tx.amount;
+    }
+
+    for (const cat of categories) {
+      if (cat.monthlyBudget && cat.monthlyBudget > 0) {
+        const spent = catSpentMap[cat.id] || 0;
+        const pct = (spent / cat.monthlyBudget) * 100;
+        if (pct >= settings.monthlyBudgetWarningThreshold) {
+          const alertId = `alert-cat-${cat.id}-${currentMonth}`;
+          list.push({
+            id: alertId,
+            title: pct >= 100 ? `Category Overbudget: ${cat.name}` : `Category Warning: ${cat.name}`,
+            message: `Spent ${settings.currency}${spent.toFixed(2)} of ${settings.currency}${cat.monthlyBudget.toFixed(2)} (${pct.toFixed(0)}%).`,
+            type: pct >= 100 ? 'danger' : 'warning',
+            date: new Date().toISOString().slice(0, 10),
+            category: cat.name,
+            isRead: readAlertIds.includes(alertId),
+          });
+        }
+      }
+    }
+
+    // Debt due date alerts
+    const currentDay = targetDate.getDate();
+    for (const debt of debts) {
+      if (debt.remainingBalance > 0 && debt.dueDay) {
+        const daysUntilDue = debt.dueDay - currentDay;
+        if (daysUntilDue >= 0 && daysUntilDue <= 3) {
+          const alertId = `alert-debt-due-${debt.id}-${currentMonth}`;
+          list.push({
+            id: alertId,
+            title: `Payment Due Soon: ${debt.name}`,
+            message: `Payment of ${settings.currency}${debt.minimumPayment} is due in ${daysUntilDue === 0 ? 'today' : `${daysUntilDue} day(s)`}.`,
+            type: 'info',
+            date: new Date().toISOString().slice(0, 10),
+            isRead: readAlertIds.includes(alertId),
+          });
+        }
+      }
+    }
+
+    return list;
+  }, [proratedRules, transactions, categories, debts, settings, readAlertIds]);
+
+  const unreadAlertCount = useMemo(() => alerts.filter((a) => !a.isRead).length, [alerts]);
+
+  // Actions
+  const addTransaction = async (tx: Omit<Transaction, 'id'>) => {
+    const created = await api.createTransaction(tx);
+    setTransactions((prev) => [created, ...prev]);
+    return created;
   };
 
-  const updateTransaction = async (id: string, updated: Partial<Transaction>) => {
-    setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updated } : t))
-    );
-    try {
-      await api.updateTransaction(id, updated);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error updating transaction in SQLite:', e);
-    }
+  const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
+    const updated = await api.updateTransaction(id, updates);
+    setTransactions((prev) => prev.map((t) => (t.id === id ? updated : t)));
   };
 
   const deleteTransaction = async (id: string) => {
-    const target = transactions.find((t) => t.id === id);
-    if (target) {
-      setDeletedTransactions((prev) => [target, ...prev]);
-    }
+    const tx = transactions.find((t) => t.id === id);
+    await api.deleteTransaction(id);
     setTransactions((prev) => prev.filter((t) => t.id !== id));
-    try {
-      await api.deleteTransaction(id);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error deleting transaction from SQLite:', e);
+    if (tx) {
+      setDeletedTransactions((prev) => [tx, ...prev]);
+    }
+  };
+
+  const bulkImportTransactions = async (txs: Omit<Transaction, 'id'>[]) => {
+    const res = await api.bulkImportTransactions(txs);
+    if (res.transactions) {
+      setTransactions((prev) => [...res.transactions, ...prev]);
     }
   };
 
   const restoreTransaction = async (id: string) => {
-    const target = deletedTransactions.find((t) => t.id === id);
-    if (target) {
-      setTransactions((prev) => [target, ...prev]);
+    const res = await api.restoreDeletedTransaction(id);
+    if (res.restored) {
       setDeletedTransactions((prev) => prev.filter((t) => t.id !== id));
-    }
-    try {
-      await api.restoreTransaction(id);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error restoring transaction from SQLite:', e);
+      setTransactions((prev) => [res.restored, ...prev]);
     }
   };
 
   const emptyTrash = async () => {
+    await api.emptyTrash();
     setDeletedTransactions([]);
-    try {
-      await api.emptyTrash();
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error emptying trash in SQLite:', e);
-    }
   };
 
-  const importTransactions = async (imported: Transaction[]) => {
-    setTransactions((prev) => [...imported, ...prev]);
-    try {
-      await api.importTransactions(imported);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error importing transactions into SQLite:', e);
-    }
+  const addCategory = async (cat: Omit<Category, 'id'>) => {
+    const created = await api.createCategory(cat);
+    setCategories((prev) => [...prev, created]);
+    return created;
   };
 
-  // ================= CATEGORY CRUD =================
-  const addCategory = async (cat: Omit<Category, 'id'>): Promise<Category> => {
-    const tempId = `cat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    const newCat: Category = { ...cat, id: tempId, isCustom: true };
-
-    setCategories((prev) => [...prev, newCat]);
-    try {
-      const created = await api.createCategory(newCat);
-      setCategories((prev) => prev.map((c) => (c.id === tempId ? created : c)));
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error creating category in SQLite:', e);
-    }
-    return newCat;
-  };
-
-  const updateCategory = async (id: string, updated: Partial<Category>) => {
-    setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updated } : c))
-    );
-    try {
-      await api.updateCategory(id, updated);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error updating category in SQLite:', e);
-    }
+  const updateCategory = async (id: string, updates: Partial<Category>) => {
+    const updated = await api.updateCategory(id, updates);
+    setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
   };
 
   const deleteCategory = async (id: string) => {
+    await api.deleteCategory(id);
     setCategories((prev) => prev.filter((c) => c.id !== id));
-    try {
-      await api.deleteCategory(id);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error deleting category from SQLite:', e);
-    }
   };
 
-  // ================= PRORATED BUDGET RULE CRUD =================
-  const addProratedRule = async (rule: Omit<ProratedBudgetRule, 'id'>): Promise<ProratedBudgetRule> => {
-    const tempId = `rule-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    const newRule: ProratedBudgetRule = { ...rule, id: tempId };
-
-    setProratedRules((prev) => [...prev, newRule]);
-    try {
-      const created = await api.createProratedRule(newRule);
-      setProratedRules((prev) => prev.map((r) => (r.id === tempId ? created : r)));
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error creating prorated rule in SQLite:', e);
-    }
-    return newRule;
+  const addProratedRule = async (rule: Omit<ProratedBudgetRule, 'id'>) => {
+    const created = await api.createProratedRule(rule);
+    setProratedRules((prev) => [...prev, created]);
+    return created;
   };
 
-  const updateProratedRule = async (id: string, updated: Partial<ProratedBudgetRule>) => {
-    setProratedRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...updated } : r))
-    );
-    try {
-      await api.updateProratedRule(id, updated);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error updating prorated rule in SQLite:', e);
-    }
+  const updateProratedRule = async (id: string, updates: Partial<ProratedBudgetRule>) => {
+    const updated = await api.updateProratedRule(id, updates);
+    setProratedRules((prev) => prev.map((r) => (r.id === id ? updated : r)));
   };
 
   const deleteProratedRule = async (id: string) => {
+    await api.deleteProratedRule(id);
     setProratedRules((prev) => prev.filter((r) => r.id !== id));
-    try {
-      await api.deleteProratedRule(id);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error deleting prorated rule from SQLite:', e);
-    }
   };
 
-  // ================= SAVINGS GOAL CRUD & CONTRIBUTIONS =================
-  const addSavingsGoal = async (
-    goal: Omit<SavingsGoal, 'id' | 'currentAmount' | 'history'>
-  ): Promise<SavingsGoal> => {
-    const tempId = `goal-${Date.now()}`;
-    const newGoal: SavingsGoal = {
-      ...goal,
-      id: tempId,
-      currentAmount: 0,
-      history: [],
-    };
-    setSavingsGoals((prev) => [...prev, newGoal]);
-    try {
-      const created = await api.createSavingsGoal(newGoal);
-      setSavingsGoals((prev) => prev.map((g) => (g.id === tempId ? created : g)));
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error creating savings goal in SQLite:', e);
-    }
-    return newGoal;
+  const addSavingsGoal = async (goal: Omit<SavingsGoal, 'id' | 'currentAmount' | 'history'>) => {
+    const created = await api.createSavingsGoal(goal);
+    setSavingsGoals((prev) => [...prev, created]);
+    return created;
   };
 
-  const updateSavingsGoal = async (id: string, updated: Partial<SavingsGoal>) => {
-    setSavingsGoals((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, ...updated } : g))
-    );
-    try {
-      await api.updateSavingsGoal(id, updated);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error updating savings goal in SQLite:', e);
-    }
+  const updateSavingsGoal = async (id: string, updates: Partial<SavingsGoal>) => {
+    const updated = await api.updateSavingsGoal(id, updates);
+    setSavingsGoals((prev) => prev.map((g) => (g.id === id ? updated : g)));
   };
 
   const deleteSavingsGoal = async (id: string) => {
+    await api.deleteSavingsGoal(id);
     setSavingsGoals((prev) => prev.filter((g) => g.id !== id));
-    try {
-      await api.deleteSavingsGoal(id);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error deleting savings goal from SQLite:', e);
-    }
   };
 
-  const addSavingsContribution = async (
-    goalId: string,
-    amount: number,
-    note?: string,
-    type: 'deposit' | 'withdrawal' = 'deposit'
-  ) => {
-    const contributionAmount = type === 'deposit' ? Math.abs(amount) : -Math.abs(amount);
-
-    setSavingsGoals((prev) =>
-      prev.map((g) => {
-        if (g.id !== goalId) return g;
-        const newBalance = Math.max(0, g.currentAmount + contributionAmount);
-        const newHistoryItem = {
-          id: `h-${Date.now()}`,
-          date: new Date().toISOString().split('T')[0],
-          amount: Math.abs(amount),
-          note: note || (type === 'deposit' ? 'Added savings funds' : 'Withdrawn savings funds'),
-          type,
-        };
-        return {
-          ...g,
-          currentAmount: newBalance,
-          history: [newHistoryItem, ...(g.history || [])],
-        };
-      })
-    );
-
-    try {
-      const updated = await api.addSavingsContribution(goalId, amount, note, type);
-      setSavingsGoals((prev) => prev.map((g) => (g.id === goalId ? updated : g)));
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error recording contribution in SQLite:', e);
-    }
+  const addSavingsContribution = async (goalId: string, item: Omit<SavingsHistoryItem, 'id'>) => {
+    const updated = await api.addSavingsContribution(goalId, item);
+    setSavingsGoals((prev) => prev.map((g) => (g.id === goalId ? updated : g)));
   };
 
-  // ================= DEBT CRUD & PAYMENTS =================
-  const addDebt = async (
-    debt: Omit<DebtItem, 'id' | 'remainingBalance' | 'payments'>
-  ): Promise<DebtItem> => {
-    const tempId = `debt-${Date.now()}`;
-    const newDebt: DebtItem = {
-      ...debt,
-      id: tempId,
-      remainingBalance: debt.totalPrincipal,
-      payments: [],
-    };
-    setDebts((prev) => [...prev, newDebt]);
-    try {
-      const created = await api.createDebt(newDebt);
-      setDebts((prev) => prev.map((d) => (d.id === tempId ? created : d)));
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error creating debt in SQLite:', e);
-    }
-    return newDebt;
+  const addDebt = async (debt: Omit<DebtItem, 'id' | 'remainingBalance' | 'payments'>) => {
+    const created = await api.createDebt(debt);
+    setDebts((prev) => [...prev, created]);
+    return created;
   };
 
-  const updateDebt = async (id: string, updated: Partial<DebtItem>) => {
-    setDebts((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, ...updated } : d))
-    );
-    try {
-      await api.updateDebt(id, updated);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error updating debt in SQLite:', e);
-    }
+  const updateDebt = async (id: string, updates: Partial<DebtItem>) => {
+    const updated = await api.updateDebt(id, updates);
+    setDebts((prev) => prev.map((d) => (d.id === id ? updated : d)));
   };
 
   const deleteDebt = async (id: string) => {
+    await api.deleteDebt(id);
     setDebts((prev) => prev.filter((d) => d.id !== id));
-    try {
-      await api.deleteDebt(id);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error deleting debt from SQLite:', e);
-    }
   };
 
-  const recordDebtPayment = async (debtId: string, amount: number, note?: string) => {
-    const payAmount = Math.abs(amount);
-    let calculatedPrincipal = payAmount;
-    let calculatedInterest = 0;
-
-    setDebts((prev) =>
-      prev.map((d) => {
-        if (d.id !== debtId) return d;
-        const monthlyInterest = (d.remainingBalance * (d.interestRate / 100)) / 12;
-        calculatedInterest = Math.min(payAmount, monthlyInterest);
-        calculatedPrincipal = Math.max(0, payAmount - calculatedInterest);
-        const newBalance = Math.max(0, d.remainingBalance - calculatedPrincipal);
-
-        const newPayment = {
-          id: `pay-${Date.now()}`,
-          date: new Date().toISOString().split('T')[0],
-          amount: payAmount,
-          principalPaid: Number(calculatedPrincipal.toFixed(2)),
-          interestPaid: Number(calculatedInterest.toFixed(2)),
-          note: note || 'Monthly debt installment',
-        };
-
-        return {
-          ...d,
-          remainingBalance: Number(newBalance.toFixed(2)),
-          payments: [newPayment, ...(d.payments || [])],
-        };
-      })
-    );
-
-    try {
-      const updated = await api.recordDebtPayment(
-        debtId,
-        payAmount,
-        Number(calculatedPrincipal.toFixed(2)),
-        Number(calculatedInterest.toFixed(2)),
-        note
-      );
-      setDebts((prev) => prev.map((d) => (d.id === debtId ? updated : d)));
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error recording debt payment in SQLite:', e);
-    }
+  const recordDebtPayment = async (debtId: string, payment: Omit<DebtPaymentItem, 'id'>) => {
+    const updated = await api.recordDebtPayment(debtId, payment);
+    setDebts((prev) => prev.map((d) => (d.id === debtId ? updated : d)));
   };
 
-  // ================= RECURRING CRUD & APPLY =================
-  const addRecurringItem = async (item: Omit<RecurringItem, 'id'>): Promise<RecurringItem> => {
-    const tempId = `rec-${Date.now()}`;
-    const newItem: RecurringItem = { ...item, id: tempId };
-
-    setRecurring((prev) => [...prev, newItem]);
-    try {
-      const created = await api.createRecurring(newItem);
-      setRecurring((prev) => prev.map((r) => (r.id === tempId ? created : r)));
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error creating recurring item in SQLite:', e);
-    }
-    return newItem;
+  const addRecurringItem = async (item: Omit<RecurringItem, 'id'>) => {
+    const created = await api.createRecurring(item);
+    setRecurringItems((prev) => [...prev, created]);
+    return created;
   };
 
-  const updateRecurringItem = async (id: string, updated: Partial<RecurringItem>) => {
-    setRecurring((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...updated } : r))
-    );
-    try {
-      await api.updateRecurring(id, updated);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error updating recurring item in SQLite:', e);
-    }
+  const updateRecurringItem = async (id: string, updates: Partial<RecurringItem>) => {
+    const updated = await api.updateRecurring(id, updates);
+    setRecurringItems((prev) => prev.map((r) => (r.id === id ? updated : r)));
   };
 
   const deleteRecurringItem = async (id: string) => {
-    setRecurring((prev) => prev.filter((r) => r.id !== id));
-    try {
-      await api.deleteRecurring(id);
-      api.getDbStats().then(setDbStats).catch(() => {});
-    } catch (e) {
-      console.error('Error deleting recurring item from SQLite:', e);
-    }
+    await api.deleteRecurring(id);
+    setRecurringItems((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const applyRecurringForMonth = async (targetMonth: string): Promise<{ addedCount: number }> => {
-    try {
-      const res = await api.applyRecurringForMonth(targetMonth);
-      await refreshFromDb();
-      return { addedCount: res.addedCount };
-    } catch (e) {
-      console.error('Error applying recurring items in SQLite:', e);
-      return { addedCount: 0 };
-    }
+  const applyRecurringForMonth = async (month?: string) => {
+    const res = await api.applyRecurringItems(month);
+    await refreshFromDb();
+    return res.addedCount;
   };
 
-  // ================= ALERT ACTIONS =================
-  const markAlertAsRead = (alertId: string) => {
-    setReadAlertIds((prev) => (prev.includes(alertId) ? prev : [...prev, alertId]));
-    api.markAlertRead(alertId).catch(() => {});
+  const updateSettings = async (updates: Partial<UserSettings>) => {
+    const updated = await api.updateSettings(updates);
+    setSettings(updated);
   };
 
-  const markAllAlertsAsRead = () => {
+  const markAlertRead = async (id: string) => {
+    await api.markAlertRead(id);
+    setReadAlertIds((prev) => [...prev, id]);
+  };
+
+  const markAllAlertsRead = async () => {
     const allIds = alerts.map((a) => a.id);
-    setReadAlertIds(allIds);
-    api.markAllAlertsRead(allIds).catch(() => {});
+    await api.markAllAlertsRead(allIds);
+    setReadAlertIds((prev) => Array.from(new Set([...prev, ...allIds])));
   };
 
-  const clearAlerts = () => {
-    const allIds = alerts.map((a) => a.id);
-    setReadAlertIds(allIds);
-    api.clearAllReadAlerts().catch(() => {});
+  const clearReadAlerts = async () => {
+    await api.clearReadAlerts();
+    setReadAlertIds([]);
   };
 
-  const triggerTestNotification = (
-    title = 'Budget Alert Notification',
-    message = 'Your prorated daily limit on Snacks was exceeded by +$12.50 today.'
-  ) => {
-    if ('Notification' in window) {
-      if (Notification.permission === 'granted') {
-        new Notification(title, { body: message });
-      } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then((permission) => {
-          if (permission === 'granted') {
-            new Notification(title, { body: message });
-          }
-        });
-      }
-    }
-  };
-
-  // ================= SETTINGS & DB RESET =================
-  const updateSettings = async (newSettings: Partial<UserSettings>) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }));
-    try {
-      const updated = await api.updateSettings(newSettings);
-      setSettings(updated);
-    } catch (e) {
-      console.error('Error updating settings in SQLite:', e);
-    }
-  };
-
-  const resetToDefaultData = async () => {
-    try {
-      await api.resetDbToZero();
-      await refreshFromDb();
-    } catch (e) {
-      console.error('Error resetting SQLite db:', e);
-      const fresh = getInitialSeedData();
-      setTransactions(fresh.transactions);
-      setCategories(fresh.categories);
-      setProratedRules(fresh.proratedRules);
-      setSavingsGoals(fresh.savingsGoals);
-      setDebts(fresh.debts);
-      setRecurring(fresh.recurring);
-      setSettings(fresh.settings);
-      setReadAlertIds([]);
-      setSelectedMonth(fresh.settings.selectedMonth);
-    }
+  const resetToZero = async () => {
+    await api.resetToZero();
+    await refreshFromDb();
   };
 
   const resetAllDataToZero = async () => {
-    await resetToDefaultData();
+    await api.resetToZero();
+    await refreshFromDb();
   };
 
-  const loadDemoDataset = async () => {
-    try {
-      await api.loadDemoData();
-      await refreshFromDb();
-    } catch (e) {
-      console.error('Error loading demo data into SQLite:', e);
-    }
+  const loadDemoData = async () => {
+    await api.loadDemoData();
+    await refreshFromDb();
   };
 
   return (
@@ -689,22 +421,21 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
         proratedRules,
         savingsGoals,
         debts,
-        recurring,
+        recurringItems,
+        settings,
+        readAlertIds,
         alerts,
         unreadAlertCount,
-        settings,
-        selectedMonth,
-        setSelectedMonth,
-        dbStats,
-        isDbSyncing,
+        isLoading,
+        error,
         dbStatus,
         refreshFromDb,
         addTransaction,
         updateTransaction,
         deleteTransaction,
+        bulkImportTransactions,
         restoreTransaction,
         emptyTrash,
-        importTransactions,
         addCategory,
         updateCategory,
         deleteCategory,
@@ -723,15 +454,13 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
         updateRecurringItem,
         deleteRecurringItem,
         applyRecurringForMonth,
-        markAlertAsRead,
-        markAllAlertsAsRead,
-        clearAlerts,
-        triggerTestNotification,
         updateSettings,
-        resetToDefaultData,
+        markAlertRead,
+        markAllAlertsRead,
+        clearReadAlerts,
+        resetToZero,
         resetAllDataToZero,
-        loadDemoDataset,
-        allTags,
+        loadDemoData,
       }}
     >
       {children}
@@ -739,7 +468,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   );
 };
 
-export const useExpense = (): ExpenseContextType => {
+export const useExpense = () => {
   const context = useContext(ExpenseContext);
   if (!context) {
     throw new Error('useExpense must be used within an ExpenseProvider');

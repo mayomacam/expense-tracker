@@ -3,146 +3,110 @@ import {
   Category,
   ProratedBudgetRule,
   SavingsGoal,
+  SavingsHistoryItem,
   DebtItem,
+  DebtPaymentItem,
   RecurringItem,
   UserSettings,
 } from '../types';
 
-export interface DatabaseStats {
-  engine: string;
-  databaseFile: string;
-  fileSizeKb: number;
-  tables: {
-    transactions: number;
-    categories: number;
-    prorated_rules: number;
-    savings_goals: number;
-    debts: number;
-    recurring_items: number;
-  };
-  status: string;
-  lastSync: string;
-}
+const jsonHeaders = { 'Content-Type': 'application/json' };
 
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
-  });
-
+async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    let errorMsg = `HTTP Error ${res.status}`;
-    try {
-      const data = await res.json();
-      if (data.error) errorMsg = data.error;
-    } catch {}
-    throw new Error(errorMsg);
+    const errorBody = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(errorBody.error || `HTTP error! status: ${res.status}`);
   }
-
   return res.json();
 }
 
 export const api = {
-  // DB status & operations
-  getDbStats: () => request<DatabaseStats>('/api/db/status'),
-  resetDb: () => request<{ success: boolean; message: string }>('/api/db/reset', { method: 'POST' }),
-  resetDbToZero: () => request<{ success: boolean; message: string }>('/api/db/reset-to-zero', { method: 'POST' }),
-  loadDemoData: () => request<{ success: boolean; message: string }>('/api/db/load-demo', { method: 'POST' }),
+  // Database status and reset
+  getDbStatus: () => fetch('/api/db/status').then(handleResponse<{ success: boolean; engine: string; databaseFile: string; fileSizeKb: number; tables: Record<string, number>; status: string; lastSync: string }>),
+  resetDatabase: () => fetch('/api/db/reset', { method: 'POST' }).then(handleResponse<{ success: boolean; message: string }>),
+  resetToZero: () => fetch('/api/db/reset-to-zero', { method: 'POST' }).then(handleResponse<{ success: boolean; message: string }>),
+  loadDemoData: () => fetch('/api/db/load-demo', { method: 'POST' }).then(handleResponse<{ success: boolean; message: string }>),
 
   // Transactions
-  getTransactions: () => request<Transaction[]>('/api/transactions'),
-  getTransaction: (id: string) => request<Transaction>(`/api/transactions/${id}`),
-  createTransaction: (tx: Omit<Transaction, 'id'> & { id?: string }) =>
-    request<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(tx) }),
+  getTransactions: () => fetch('/api/transactions').then(handleResponse<Transaction[]>),
+  createTransaction: (tx: Omit<Transaction, 'id'>) =>
+    fetch('/api/transactions', { method: 'POST', headers: jsonHeaders, body: JSON.stringify(tx) }).then(handleResponse<Transaction>),
   updateTransaction: (id: string, updates: Partial<Transaction>) =>
-    request<Transaction>(`/api/transactions/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
+    fetch(`/api/transactions/${id}`, { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(updates) }).then(handleResponse<Transaction>),
   deleteTransaction: (id: string) =>
-    request<{ success: boolean; id: string }>(`/api/transactions/${id}`, { method: 'DELETE' }),
-  getDeletedTransactions: () => request<Transaction[]>('/api/deleted-transactions'),
-  restoreTransaction: (id: string) =>
-    request<{ success: boolean; restored: Transaction }>(`/api/deleted-transactions/${id}/restore`, { method: 'POST' }),
+    fetch(`/api/transactions/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; id: string }>),
+  bulkImportTransactions: (transactions: Omit<Transaction, 'id'>[]) =>
+    fetch('/api/transactions/import', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ transactions }) }).then(handleResponse<{ success: boolean; count: number; transactions: Transaction[] }>),
+
+  // Deleted Transactions (Trash)
+  getDeletedTransactions: () => fetch('/api/deleted-transactions').then(handleResponse<Transaction[]>),
+  restoreDeletedTransaction: (id: string) =>
+    fetch(`/api/deleted-transactions/${id}/restore`, { method: 'POST' }).then(handleResponse<{ success: boolean; restored: Transaction }>),
   emptyTrash: () =>
-    request<{ success: boolean; message: string }>('/api/deleted-transactions', { method: 'DELETE' }),
-  importTransactions: (transactions: Transaction[]) =>
-    request<{ success: boolean; count: number; transactions: Transaction[] }>('/api/transactions/import', {
-      method: 'POST',
-      body: JSON.stringify({ transactions }),
-    }),
+    fetch('/api/deleted-transactions', { method: 'DELETE' }).then(handleResponse<{ success: boolean; message: string }>),
 
   // Categories
-  getCategories: () => request<Category[]>('/api/categories'),
-  createCategory: (cat: Omit<Category, 'id'> & { id?: string }) =>
-    request<Category>('/api/categories', { method: 'POST', body: JSON.stringify(cat) }),
+  getCategories: () => fetch('/api/categories').then(handleResponse<Category[]>),
+  createCategory: (cat: Omit<Category, 'id'>) =>
+    fetch('/api/categories', { method: 'POST', headers: jsonHeaders, body: JSON.stringify(cat) }).then(handleResponse<Category>),
   updateCategory: (id: string, updates: Partial<Category>) =>
-    request<Category>(`/api/categories/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
+    fetch(`/api/categories/${id}`, { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(updates) }).then(handleResponse<Category>),
   deleteCategory: (id: string) =>
-    request<{ success: boolean; id: string }>(`/api/categories/${id}`, { method: 'DELETE' }),
+    fetch(`/api/categories/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; id: string }>),
 
   // Prorated Budget Rules
-  getProratedRules: () => request<ProratedBudgetRule[]>('/api/prorated-rules'),
-  createProratedRule: (rule: Omit<ProratedBudgetRule, 'id'> & { id?: string }) =>
-    request<ProratedBudgetRule>('/api/prorated-rules', { method: 'POST', body: JSON.stringify(rule) }),
+  getProratedRules: () => fetch('/api/prorated-rules').then(handleResponse<ProratedBudgetRule[]>),
+  createProratedRule: (rule: Omit<ProratedBudgetRule, 'id'>) =>
+    fetch('/api/prorated-rules', { method: 'POST', headers: jsonHeaders, body: JSON.stringify(rule) }).then(handleResponse<ProratedBudgetRule>),
   updateProratedRule: (id: string, updates: Partial<ProratedBudgetRule>) =>
-    request<ProratedBudgetRule>(`/api/prorated-rules/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
+    fetch(`/api/prorated-rules/${id}`, { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(updates) }).then(handleResponse<ProratedBudgetRule>),
   deleteProratedRule: (id: string) =>
-    request<{ success: boolean; id: string }>(`/api/prorated-rules/${id}`, { method: 'DELETE' }),
+    fetch(`/api/prorated-rules/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; id: string }>),
 
   // Savings Goals
-  getSavingsGoals: () => request<SavingsGoal[]>('/api/savings-goals'),
-  createSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'currentAmount' | 'history'> & { id?: string; currentAmount?: number }) =>
-    request<SavingsGoal>('/api/savings-goals', { method: 'POST', body: JSON.stringify(goal) }),
+  getSavingsGoals: () => fetch('/api/savings-goals').then(handleResponse<SavingsGoal[]>),
+  createSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'currentAmount' | 'history'>) =>
+    fetch('/api/savings-goals', { method: 'POST', headers: jsonHeaders, body: JSON.stringify(goal) }).then(handleResponse<SavingsGoal>),
   updateSavingsGoal: (id: string, updates: Partial<SavingsGoal>) =>
-    request<SavingsGoal>(`/api/savings-goals/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
+    fetch(`/api/savings-goals/${id}`, { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(updates) }).then(handleResponse<SavingsGoal>),
   deleteSavingsGoal: (id: string) =>
-    request<{ success: boolean; id: string }>(`/api/savings-goals/${id}`, { method: 'DELETE' }),
-  addSavingsContribution: (goalId: string, amount: number, note?: string, type: 'deposit' | 'withdrawal' = 'deposit') =>
-    request<SavingsGoal>(`/api/savings-goals/${goalId}/contributions`, {
-      method: 'POST',
-      body: JSON.stringify({ amount, note, type }),
-    }),
+    fetch(`/api/savings-goals/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; id: string }>),
+  addSavingsContribution: (goalId: string, item: Omit<SavingsHistoryItem, 'id'>) =>
+    fetch(`/api/savings-goals/${goalId}/contributions`, { method: 'POST', headers: jsonHeaders, body: JSON.stringify(item) }).then(handleResponse<SavingsGoal>),
 
   // Debts
-  getDebts: () => request<DebtItem[]>('/api/debts'),
-  createDebt: (debt: Omit<DebtItem, 'id' | 'remainingBalance' | 'payments'> & { id?: string; remainingBalance?: number }) =>
-    request<DebtItem>('/api/debts', { method: 'POST', body: JSON.stringify(debt) }),
+  getDebts: () => fetch('/api/debts').then(handleResponse<DebtItem[]>),
+  createDebt: (debt: Omit<DebtItem, 'id' | 'remainingBalance' | 'payments'>) =>
+    fetch('/api/debts', { method: 'POST', headers: jsonHeaders, body: JSON.stringify(debt) }).then(handleResponse<DebtItem>),
   updateDebt: (id: string, updates: Partial<DebtItem>) =>
-    request<DebtItem>(`/api/debts/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
+    fetch(`/api/debts/${id}`, { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(updates) }).then(handleResponse<DebtItem>),
   deleteDebt: (id: string) =>
-    request<{ success: boolean; id: string }>(`/api/debts/${id}`, { method: 'DELETE' }),
-  recordDebtPayment: (debtId: string, amount: number, principalPaid?: number, interestPaid?: number, note?: string) =>
-    request<DebtItem>(`/api/debts/${debtId}/payments`, {
-      method: 'POST',
-      body: JSON.stringify({ amount, principalPaid, interestPaid, note }),
-    }),
+    fetch(`/api/debts/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; id: string }>),
+  recordDebtPayment: (debtId: string, payment: Omit<DebtPaymentItem, 'id'>) =>
+    fetch(`/api/debts/${debtId}/payments`, { method: 'POST', headers: jsonHeaders, body: JSON.stringify(payment) }).then(handleResponse<DebtItem>),
 
   // Recurring Items
-  getRecurring: () => request<RecurringItem[]>('/api/recurring'),
-  createRecurring: (item: Omit<RecurringItem, 'id'> & { id?: string }) =>
-    request<RecurringItem>('/api/recurring', { method: 'POST', body: JSON.stringify(item) }),
+  getRecurring: () => fetch('/api/recurring').then(handleResponse<RecurringItem[]>),
+  createRecurring: (item: Omit<RecurringItem, 'id'>) =>
+    fetch('/api/recurring', { method: 'POST', headers: jsonHeaders, body: JSON.stringify(item) }).then(handleResponse<RecurringItem>),
   updateRecurring: (id: string, updates: Partial<RecurringItem>) =>
-    request<RecurringItem>(`/api/recurring/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
+    fetch(`/api/recurring/${id}`, { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(updates) }).then(handleResponse<RecurringItem>),
   deleteRecurring: (id: string) =>
-    request<{ success: boolean; id: string }>(`/api/recurring/${id}`, { method: 'DELETE' }),
-  applyRecurringForMonth: (month: string) =>
-    request<{ success: boolean; addedCount: number; month: string }>('/api/recurring/apply', {
-      method: 'POST',
-      body: JSON.stringify({ month }),
-    }),
+    fetch(`/api/recurring/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; id: string }>),
+  applyRecurringItems: (month?: string) =>
+    fetch('/api/recurring/apply', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ month }) }).then(handleResponse<{ success: boolean; addedCount: number; month: string }>),
 
   // Settings
-  getSettings: () => request<UserSettings>('/api/settings'),
+  getSettings: () => fetch('/api/settings').then(handleResponse<UserSettings>),
   updateSettings: (updates: Partial<UserSettings>) =>
-    request<UserSettings>('/api/settings', { method: 'PUT', body: JSON.stringify(updates) }),
+    fetch('/api/settings', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(updates) }).then(handleResponse<UserSettings>),
 
-  // Read Alerts
-  getReadAlerts: () => request<string[]>('/api/alerts/read'),
+  // Alerts Read State
+  getReadAlerts: () => fetch('/api/alerts/read').then(handleResponse<string[]>),
   markAlertRead: (alertId: string) =>
-    request<{ success: boolean }>('/api/alerts/read', { method: 'POST', body: JSON.stringify({ alertId }) }),
+    fetch('/api/alerts/read', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ alertId }) }).then(handleResponse<{ success: boolean }>),
   markAllAlertsRead: (alertIds: string[]) =>
-    request<{ success: boolean }>('/api/alerts/read/all', { method: 'POST', body: JSON.stringify({ alertIds }) }),
-  clearAllReadAlerts: () =>
-    request<{ success: boolean }>('/api/alerts/read', { method: 'DELETE' }),
+    fetch('/api/alerts/read/all', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ alertIds }) }).then(handleResponse<{ success: boolean }>),
+  clearReadAlerts: () =>
+    fetch('/api/alerts/read', { method: 'DELETE' }).then(handleResponse<{ success: boolean }>),
 };

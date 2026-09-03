@@ -1,819 +1,196 @@
 import React, { useState, useMemo } from 'react';
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ReferenceLine,
-  Area,
-  ComposedChart,
-  Bar,
-} from 'recharts';
-import {
-  Calculator,
-  AlertTriangle,
-  CheckCircle2,
-  TrendingUp,
-  ArrowRightLeft,
-  Plus,
-  Edit2,
-  Trash2,
-  Calendar,
-  AlertCircle,
-  Sparkles,
-  Info,
-  Cookie,
-  Coffee,
-  Link2,
-  X,
-} from 'lucide-react';
+import { Scale, Plus, Trash2, Calendar, AlertTriangle, CheckCircle2, ChevronRight, Zap } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
-import { ProratedBudgetRule, Transaction } from '../../types';
-import { calculateProratedDailyBreakdown, getTransactionsForRule } from '../../utils/budgetCalculations';
-import { formatCurrency, getMonthName } from '../../utils/formatters';
-import { CategoryIcon } from '../common/CategoryIcon';
+import { ProratedBudgetRule } from '../../types';
+import { calculateProratedRule } from '../../utils/budgetCalculations';
+import { formatCurrency } from '../../utils/formatters';
 import { LogProratedSpendModal } from '../modals/LogProratedSpendModal';
 
 interface ProratedBudgetViewProps {
-  selectedRuleId?: string;
-  onSelectRuleId?: (id: string) => void;
-  onOpenAddTransaction: (defaultCategory?: string, defaultDate?: string) => void;
-  onOpenAddProratedModal: () => void;
-  onEditProratedRule: (rule: ProratedBudgetRule) => void;
-  onOpenAddCategory?: () => void;
+  onOpenAddProrated: () => void;
 }
 
-export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({
-  selectedRuleId: externalSelectedRuleId,
-  onSelectRuleId,
-  onOpenAddTransaction,
-  onOpenAddProratedModal,
-  onEditProratedRule,
-  onOpenAddCategory,
-}) => {
-  const {
-    proratedRules,
-    transactions,
-    categories,
-    selectedMonth,
-    deleteProratedRule,
-    deleteTransaction,
-    updateTransaction,
-    settings,
-  } = useExpense();
+export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({ onOpenAddProrated }) => {
+  const { proratedRules, transactions, deleteProratedRule, updateProratedRule, settings } = useExpense();
+  const [activeSpendRule, setActiveSpendRule] = useState<ProratedBudgetRule | null>(null);
 
-  const [internalSelectedRuleId, setInternalSelectedRuleId] = useState<string>(
-    proratedRules[0]?.id || ''
-  );
-  const [chartMode, setChartMode] = useState<'cumulative' | 'daily'>('daily');
-  const [quickLogModalOpen, setQuickLogModalOpen] = useState(false);
-  const [quickLogDate, setQuickLogDate] = useState<string | undefined>(undefined);
-
-  const selectedRuleId = externalSelectedRuleId || internalSelectedRuleId;
-
-  const activeRule =
-    proratedRules.find((r) => r.id === selectedRuleId) || proratedRules[0] || null;
-
-  const breakdown = activeRule
-    ? calculateProratedDailyBreakdown(activeRule, transactions, selectedMonth)
-    : null;
-
-  const chartData = useMemo(() => {
-    if (!breakdown) return [];
-    return breakdown.dailyRecords.map((r) => ({
-      day: r.day,
-      date: r.date,
-      dayOfWeek: r.dayOfWeek,
-      dailySpend: r.amountSpent,
-      dailyLimit: r.dailyProratedLimit,
-      cumulativeSpend: r.cumulativeSpent,
-      cumulativeLimit: r.cumulativeProratedLimit,
-      isOver: r.isOverLimit,
-      delta: r.delta,
-    }));
-  }, [breakdown]);
-
-  const ruleTransactions = useMemo(() => {
-    return activeRule ? getTransactionsForRule(activeRule, transactions) : [];
-  }, [activeRule, transactions]);
-
-  const unlinkedMonthTransactions = useMemo(() => {
-    if (!activeRule) return [];
-    const monthTxs = transactions.filter((t) => t.date.startsWith(selectedMonth) && t.type === 'expense');
-    const linkedIds = new Set(ruleTransactions.map((t) => t.id));
-    return monthTxs.filter((t) => !linkedIds.has(t.id));
-  }, [activeRule, transactions, selectedMonth, ruleTransactions]);
-
-  if (!activeRule || !breakdown) {
-    return (
-      <div className="space-y-6 font-mono">
-        <div className="bg-[#111114] p-8 rounded-2xl border border-white/[0.08] text-center space-y-4">
-          <Calculator className="w-12 h-12 text-[#c1ff72] mx-auto" />
-          <h3 className="text-lg font-bold text-white">No Prorated Trackers Configured</h3>
-          <p className="text-xs text-zinc-400 max-w-md mx-auto">
-            Set up daily prorated budget caps to pace your spending.
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={onOpenAddProratedModal}
-              className="px-5 py-2.5 bg-[#c1ff72] hover:bg-[#b0f05f] text-black font-extrabold rounded-xl text-xs inline-flex items-center gap-2 uppercase"
-            >
-              <Plus className="w-4 h-4 text-black stroke-[3]" />
-              <span>Create Prorated Tracker</span>
-            </button>
-            {onOpenAddCategory && (
-              <button
-                type="button"
-                onClick={onOpenAddCategory}
-                className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl text-xs inline-flex items-center gap-1.5 uppercase border border-white/10"
-              >
-                <Plus className="w-4 h-4 text-zinc-400" />
-                <span>New Category</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const calculations = useMemo(() => {
+    return proratedRules.map((rule) => calculateProratedRule(rule, transactions, new Date()));
+  }, [proratedRules, transactions]);
 
   return (
-    <div className="space-y-6 font-mono">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#111114] p-5 rounded-2xl border border-white/[0.08] backdrop-blur-md">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="tag text-[#c1ff72] border-[#c1ff72]/30 bg-[#c1ff72]/10">
-              Prorated Engine
-            </span>
-            <span className="text-xs text-zinc-500">•</span>
-            <span className="text-xs font-mono text-zinc-400">
-              {getMonthName(selectedMonth)} ({breakdown.daysInMonth} DAYS)
-            </span>
+            <Scale className="w-5 h-5 text-[#c1ff72]" />
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              Prorated Daily Budget Tracking
+            </h2>
           </div>
-          <h2 className="text-xl font-extrabold text-white tracking-tight mt-1">
-            {activeRule.name} Daily Limit & Tracking
-          </h2>
-          <p className="text-xs text-zinc-400 mt-0.5 font-mono">
-            Monthly max spend of {formatCurrency(activeRule.monthlyMaxSpend, settings.currency)} ÷ {breakdown.daysInMonth} days ={' '}
-            <strong className="text-[#c1ff72]">
-              {formatCurrency(breakdown.dailyProratedLimit, settings.currency)} / day
-            </strong>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Calculates dynamic daily allowances based on remaining days in the month and past expenditure.
           </p>
         </div>
-
-        {/* Prorated Tracker Controls Header Bar & 1-Click Pill Switcher */}
-        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2.5">
-          {/* 1-Click Tracker Pill Switcher */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
-            {proratedRules.map((rule) => {
-              const isSelected = activeRule.id === rule.id;
-              return (
-                <button
-                  key={rule.id}
-                  type="button"
-                  onClick={() => {
-                    setInternalSelectedRuleId(rule.id);
-                    if (onSelectRuleId) onSelectRuleId(rule.id);
-                  }}
-                  className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 font-mono ${
-                    isSelected
-                      ? 'bg-[#c1ff72] text-black shadow-[0_0_12px_rgba(193,255,114,0.35)] scale-[1.02]'
-                      : 'bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10'
-                  }`}
-                >
-                  <span>{rule.name}</span>
-                  <span className={`text-[10px] ${isSelected ? 'text-black/70 font-extrabold' : 'text-zinc-400'}`}>
-                    ({formatCurrency(rule.monthlyMaxSpend, settings.currency)}/mo)
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Edit Current Tracker Settings */}
-          <button
-            type="button"
-            id="edit-prorated-tracker-btn"
-            onClick={() => onEditProratedRule(activeRule)}
-            className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/15 text-zinc-300 hover:text-white rounded-xl transition-all"
-            title={`Edit ${activeRule.name} Settings`}
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-
-          {/* New Prorated Tracker Button */}
-          <button
-            type="button"
-            id="new-prorated-tracker-btn"
-            onClick={onOpenAddProratedModal}
-            className="px-3.5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/15 text-zinc-200 hover:text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all uppercase tracking-wider text-[11px]"
-          >
-            <Plus className="w-4 h-4 text-[#c1ff72]" />
-            <span>New Tracker</span>
-          </button>
-
-          {/* Primary Log Tracker Spend Button (Bright Green) */}
-          <button
-            type="button"
-            id="log-prorated-spend-btn"
-            onClick={() => {
-              setQuickLogDate(undefined);
-              setQuickLogModalOpen(true);
-            }}
-            className="px-4 py-2.5 bg-[#c1ff72] hover:bg-[#b0f05f] text-black font-extrabold rounded-xl text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(193,255,114,0.35)] transition-all uppercase tracking-wider text-[11px]"
-          >
-            <Plus className="w-4 h-4 text-black stroke-[3]" />
-            <span>LOG {activeRule.name.toUpperCase()} SPEND</span>
-          </button>
-
-          {/* New Category Button */}
-          {onOpenAddCategory && (
-            <button
-              type="button"
-              id="new-category-prorated-btn"
-              onClick={onOpenAddCategory}
-              className="px-3 py-2.5 bg-white/5 hover:bg-white/10 border border-white/15 text-zinc-300 hover:text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-all uppercase text-[11px]"
-              title="Add a new category"
-            >
-              <Plus className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Category</span>
-            </button>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={onOpenAddProrated}
+          className="px-3.5 py-2 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1.5 self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" />
+          <span>New Prorated Rule</span>
+        </button>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Daily Prorated Allowance */}
-        <div className="bg-[#111114] p-5 rounded-2xl border border-white/[0.08] relative overflow-hidden backdrop-blur-md">
-          <div className="flex items-center justify-between text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
-            <span>Daily Prorated Limit</span>
-            <Calculator className="w-4 h-4 text-[#c1ff72]" />
-          </div>
-          <div className="stat-value text-[#c1ff72] font-mono">
-            {formatCurrency(breakdown.dailyProratedLimit, settings.currency)}
-          </div>
-          <div className="text-[11px] text-zinc-400 mt-1 font-mono">
-            <span>{formatCurrency(breakdown.effectiveMonthlyBudget, settings.currency)} ÷ {breakdown.daysInMonth} days</span>
-          </div>
+      {/* Rules Grid */}
+      {calculations.length === 0 ? (
+        <div className="p-12 text-center bg-[#16161a] border border-dashed border-zinc-800 rounded-xl">
+          <Scale className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+          <h3 className="text-sm font-semibold text-white">No Prorated Rules Defined</h3>
+          <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+            Create rules for categories like Dining, Entertainment, or Daily Groceries to calculate precise per-day allowable limits.
+          </p>
+          <button
+            type="button"
+            onClick={onOpenAddProrated}
+            className="mt-4 px-4 py-2 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg"
+          >
+            Create Rule Now
+          </button>
         </div>
-
-        {/* Total Spent vs Budget */}
-        <div className="bg-[#111114] p-5 rounded-2xl border border-white/[0.08] backdrop-blur-md">
-          <div className="flex items-center justify-between text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
-            <span>Total Spent / Cap</span>
-            <TrendingUp className="w-4 h-4 text-[#c1ff72]" />
-          </div>
-          <div className="stat-value text-white font-mono">
-            {formatCurrency(breakdown.totalSpentSoFar, settings.currency)}
-          </div>
-          <div className="text-[11px] text-zinc-400 mt-1 flex items-center justify-between font-mono">
-            <span>Cap: {formatCurrency(breakdown.effectiveMonthlyBudget, settings.currency)}</span>
-            <span
-              className={`font-bold ${
-                breakdown.remainingBudget >= 0 ? 'text-[#c1ff72]' : 'text-[#ff5f5f]'
-              }`}
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {calculations.map((calc) => (
+            <div
+              key={calc.rule.id}
+              className="bg-[#16161a] border border-[#27272a] rounded-xl p-5 space-y-4 shadow-sm"
             >
-              {breakdown.remainingBudget >= 0
-                ? `${formatCurrency(breakdown.remainingBudget, settings.currency)} left`
-                : `${formatCurrency(Math.abs(breakdown.remainingBudget), settings.currency)} OVER`}
-            </span>
-          </div>
-        </div>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-white tracking-tight">{calc.rule.name}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[11px] text-zinc-400">
+                      Month: <span className="text-zinc-200 font-mono">{calc.month}</span>
+                    </span>
+                    <span className="text-zinc-600">&bull;</span>
+                    <span className="text-[11px] text-zinc-400">
+                      {calc.remainingDays} days remaining
+                    </span>
+                  </div>
+                </div>
 
-        {/* Over-Limit Days */}
-        <div className="bg-[#111114] p-5 rounded-2xl border border-white/[0.08] backdrop-blur-md">
-          <div className="flex items-center justify-between text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
-            <span>Over-Limit Days</span>
-            <AlertTriangle className={`w-4 h-4 ${breakdown.exceededDaysCount > 0 ? 'text-[#ff5f5f]' : 'text-[#c1ff72]'}`} />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span
-              className={`stat-value font-mono ${
-                breakdown.exceededDaysCount > 0 ? 'text-[#ff5f5f]' : 'text-[#c1ff72]'
-              }`}
-            >
-              {breakdown.exceededDaysCount}
-            </span>
-            <span className="text-xs text-zinc-400 font-mono">
-              / {breakdown.daysPassed} days tracked
-            </span>
-          </div>
-          <div className="text-[11px] text-zinc-500 mt-1 font-mono">
-            {breakdown.maxDaySpent.amount > 0 ? (
-              <span>Peak: {formatCurrency(breakdown.maxDaySpent.amount, settings.currency)} (D{breakdown.maxDaySpent.day})</span>
-            ) : (
-              <span>No spend recorded</span>
-            )}
-          </div>
-        </div>
-
-        {/* Rollover & Projected */}
-        <div className="bg-[#111114] p-5 rounded-2xl border border-white/[0.08] backdrop-blur-md">
-          <div className="flex items-center justify-between text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
-            <span>Daily Velocity</span>
-            <ArrowRightLeft className="w-4 h-4 text-zinc-300" />
-          </div>
-          <div className="stat-value text-white font-mono">
-            {formatCurrency(breakdown.averageDailySpend, settings.currency)}
-            <span className="text-xs text-zinc-400 font-normal ml-1">/ day</span>
-          </div>
-          <div className="text-[11px] text-zinc-400 mt-1 flex items-center justify-between font-mono">
-            <span>
-              {activeRule.rolloverEnabled
-                ? `Rollover: ${activeRule.rolloverAmount > 0 ? '+' : ''}${formatCurrency(
-                    activeRule.rolloverAmount,
-                    settings.currency
-                  )}`
-                : 'Rollover Off'}
-            </span>
-            <span className="text-[#c1ff72] font-semibold">
-              Pace: {formatCurrency(breakdown.projectedMonthEndSpend, settings.currency)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Visual Chart: Actual Spending vs Daily Limit */}
-      <div className="bg-[#111114] p-6 rounded-2xl border border-white/[0.08] backdrop-blur-md">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
-                Expense Trajectory • Actual vs Daily Limit
-              </h3>
-              <span className="tag text-[#c1ff72] border-[#c1ff72]/30 bg-[#c1ff72]/10">
-                LIVE CURVE
-              </span>
-            </div>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              Daily spend bars and cumulative burn trajectory vs calculated daily allowance
-            </p>
-          </div>
-
-          {/* Toggle between Daily and Cumulative View */}
-          <div className="flex bg-white/[0.04] p-1 rounded-xl border border-white/[0.08]">
-            <button
-              id="chart-mode-daily-btn"
-              type="button"
-              onClick={() => setChartMode('daily')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                chartMode === 'daily'
-                  ? 'bg-[#c1ff72] text-black font-bold shadow-[0_0_10px_rgba(193,255,114,0.3)]'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Daily Spending Bars
-            </button>
-            <button
-              id="chart-mode-cumulative-btn"
-              type="button"
-              onClick={() => setChartMode('cumulative')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                chartMode === 'cumulative'
-                  ? 'bg-[#c1ff72] text-black font-bold shadow-[0_0_10px_rgba(193,255,114,0.3)]'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Cumulative Trend Line
-            </button>
-          </div>
-        </div>
-
-        {/* Recharts Container */}
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            {chartMode === 'daily' ? (
-              <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  tickLine={false}
-                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                  tick={{ fontSize: 10, fill: '#71717a' }}
-                  tickFormatter={(v) => `D${v}`}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                  tick={{ fontSize: 10, fill: '#71717a' }}
-                  tickFormatter={(v) => `${settings.currency}${v}`}
-                />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div className="bg-[#18181b] text-white p-3 rounded-xl shadow-2xl text-xs space-y-1.5 border border-white/10">
-                          <div className="font-bold flex items-center justify-between gap-3 text-zinc-200">
-                            <span className="font-mono">{data.date} ({data.dayOfWeek})</span>
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase ${
-                                data.isOver
-                                  ? 'bg-[#ff5f5f]/20 text-[#ff5f5f] border border-[#ff5f5f]/30'
-                                  : 'bg-[#c1ff72]/20 text-[#c1ff72] border border-[#c1ff72]/30'
-                              }`}
-                            >
-                              {data.isOver ? 'Exceeded' : 'Within Limit'}
-                            </span>
-                          </div>
-                          <div className="pt-1 border-t border-white/10 space-y-1 font-mono">
-                            <div className="flex justify-between gap-4">
-                              <span className="text-zinc-400">Day's Spend:</span>
-                              <span className="font-bold text-[#c1ff72]">
-                                {formatCurrency(data.dailySpend, settings.currency)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                              <span className="text-zinc-400">Prorated Limit:</span>
-                              <span className="font-medium text-zinc-300">
-                                {formatCurrency(data.dailyLimit, settings.currency)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                              <span className="text-zinc-400">Difference:</span>
-                              <span
-                                className={`font-bold ${
-                                  data.delta > 0 ? 'text-[#ff5f5f]' : 'text-[#c1ff72]'
-                                }`}
-                              >
-                                {data.delta > 0 ? '+' : ''}
-                                {formatCurrency(data.delta, settings.currency)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                {/* Reference ceiling line for daily limit */}
-                <ReferenceLine
-                  y={breakdown.dailyProratedLimit}
-                  stroke="rgba(255,255,255,0.4)"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 4"
-                  label={{
-                    value: `Target: ${formatCurrency(breakdown.dailyProratedLimit, settings.currency)}`,
-                    position: 'insideTopRight',
-                    fill: '#c1ff72',
-                    fontSize: 10,
-                    fontWeight: 700,
-                  }}
-                />
-                <Bar
-                  dataKey="dailySpend"
-                  name="Daily Spend"
-                  fill="#c1ff72"
-                  radius={[4, 4, 0, 0]}
-                  shape={(props: any) => {
-                    const { fill, x, y, width, height, payload } = props;
-                    const isOver = payload.isOver && payload.dailySpend > 0;
-                    return (
-                      <rect
-                        x={x}
-                        y={y}
-                        width={width}
-                        height={height}
-                        fill={isOver ? '#ff5f5f' : '#c1ff72'}
-                        rx={3}
-                        ry={3}
-                      />
-                    );
-                  }}
-                />
-              </ComposedChart>
-            ) : (
-              <LineChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  tickLine={false}
-                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                  tick={{ fontSize: 10, fill: '#71717a' }}
-                  tickFormatter={(v) => `D${v}`}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                  tick={{ fontSize: 10, fill: '#71717a' }}
-                  tickFormatter={(v) => `${settings.currency}${v}`}
-                />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div className="bg-[#18181b] text-white p-3 rounded-xl shadow-2xl text-xs space-y-1.5 border border-white/10 font-mono">
-                          <div className="font-bold text-zinc-200">
-                            {data.date} (Day {data.day})
-                          </div>
-                          <div className="pt-1 border-t border-white/10 space-y-1">
-                            <div className="flex justify-between gap-4">
-                              <span className="text-zinc-400">Cumulative Spent:</span>
-                              <span className="font-bold text-[#c1ff72]">
-                                {formatCurrency(data.cumulativeSpend, settings.currency)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                              <span className="text-zinc-400">Cumulative Ceiling:</span>
-                              <span className="font-medium text-zinc-300">
-                                {formatCurrency(data.cumulativeLimit, settings.currency)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="cumulativeLimit"
-                  stroke="rgba(255,255,255,0.25)"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  name="Prorated Budget Ceiling"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="cumulativeSpend"
-                  stroke="#c1ff72"
-                  strokeWidth={2.5}
-                  dot={{ r: 3, fill: '#c1ff72', strokeWidth: 1, stroke: '#09090b' }}
-                  activeDot={{ r: 6 }}
-                  name="Actual Cumulative Spend"
-                  className="drop-shadow-[0_0_8px_rgba(193,255,114,0.4)]"
-                />
-              </LineChart>
-            )}
-          </ResponsiveContainer>
-        </div>
-
-        {/* Legend description */}
-        <div className="flex flex-wrap items-center justify-between text-xs text-zinc-400 pt-4 border-t border-white/[0.06] mt-2 gap-2 font-mono">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-xs bg-[#c1ff72] inline-block shadow-[0_0_5px_rgba(193,255,114,0.4)]" />
-              Within Daily Limit
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-xs bg-[#ff5f5f] inline-block shadow-[0_0_5px_rgba(255,95,95,0.4)]" />
-              Exceeded Daily Limit
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-0.5 bg-white/40 inline-block border-t border-dashed border-white/60" />
-              Daily Limit Target ({formatCurrency(breakdown.dailyProratedLimit, settings.currency)})
-            </span>
-          </div>
-          <span className="text-[11px] text-zinc-500">
-            Hover over any point to inspect day-by-day delta
-          </span>
-        </div>
-      </div>
-
-      {/* Day-by-Day Itemized Table & Calendar Breakdown */}
-      <div className="bg-[#111114] rounded-2xl border border-white/[0.08] backdrop-blur-md overflow-hidden">
-        <div className="p-5 border-b border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
-              Day-by-Day {activeRule.name} Spending Log
-            </h3>
-            <p className="text-xs text-zinc-500 mt-0.5 font-mono">
-              Prorated timeline for {getMonthName(selectedMonth)}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-zinc-400">Daily Target:</span>
-            <span className="px-2.5 py-1 rounded-lg bg-[#c1ff72]/15 text-[#c1ff72] border border-[#c1ff72]/30 text-xs font-mono font-bold">
-              {formatCurrency(breakdown.dailyProratedLimit, settings.currency)} / day
-            </span>
-          </div>
-        </div>
-
-        {/* Responsive Table */}
-        <div className="overflow-x-auto max-h-96">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#18181c] text-zinc-400 font-bold sticky top-0 border-b border-white/[0.08] z-10 uppercase tracking-wider text-[10px]">
-              <tr>
-                <th className="py-3 px-4">Day</th>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Actual Spend</th>
-                <th className="py-3 px-4">Prorated Limit</th>
-                <th className="py-3 px-4">Status & Delta</th>
-                <th className="py-3 px-4">Itemized Purchases</th>
-                <th className="py-3 px-4 text-right">Quick Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04] text-zinc-300">
-              {breakdown.dailyRecords.map((rec) => {
-                return (
-                  <tr
-                    key={rec.day}
-                    className={`hover:bg-white/[0.03] transition-colors ${
-                      rec.isOverLimit && rec.amountSpent > 0 ? 'bg-[#ff5f5f]/[0.04]' : ''
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
+                      calc.status === 'overspent'
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        : calc.status === 'danger'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                     }`}
                   >
-                    <td className="py-3 px-4 font-mono font-bold text-white">
-                      Day {rec.day}
-                    </td>
-                    <td className="py-3 px-4 text-zinc-400 font-mono whitespace-nowrap">
-                      {rec.date} <span className="text-[10px] text-zinc-500">({rec.dayOfWeek})</span>
-                    </td>
-                    <td className="py-3 px-4 font-mono whitespace-nowrap">
-                      <span
-                        className={
-                          rec.amountSpent > 0
-                            ? rec.isOverLimit
-                              ? 'text-[#ff5f5f] font-bold text-sm'
-                              : 'text-white font-bold text-sm'
-                            : 'text-zinc-600'
-                        }
-                      >
-                        {formatCurrency(rec.amountSpent, settings.currency)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-zinc-400 font-mono whitespace-nowrap">
-                      {formatCurrency(rec.dailyProratedLimit, settings.currency)}
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap font-mono">
-                      {rec.amountSpent === 0 ? (
-                        <span className="tag text-zinc-500 bg-white/[0.02] border-white/5">
-                          No Spend
-                        </span>
-                      ) : rec.isOverLimit ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#ff5f5f]/15 text-[#ff5f5f] border border-[#ff5f5f]/30">
-                          <AlertCircle className="w-3 h-3" />
-                          Exceeded +{formatCurrency(rec.delta, settings.currency)}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#c1ff72]/15 text-[#c1ff72] border border-[#c1ff72]/30">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Under {formatCurrency(Math.abs(rec.delta), settings.currency)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      {rec.transactions.length > 0 ? (
-                        <div className="space-y-1">
-                          {rec.transactions.map((tx) => (
-                            <div
-                              key={tx.id}
-                              className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-white/[0.02] border border-white/[0.06]"
-                            >
-                              <div className="truncate">
-                                <span className="font-semibold text-white">{tx.title}</span>
-                                {tx.tags && tx.tags.length > 0 && (
-                                  <span className="ml-1.5 text-[10px] font-mono text-[#c1ff72]">
-                                    {tx.tags.map((t) => `#${t}`).join(' ')}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0 font-mono">
-                                <span className="font-bold text-white">
-                                  {formatCurrency(tx.amount, settings.currency)}
-                                </span>
-                                 {/* Unlink from Prorated Tracker (Keeps in ledger) */}
-                                 <button
-                                   type="button"
-                                   onClick={() => {
-                                     const cleanedTags = (tx.tags || []).filter(
-                                       (t) => !t.startsWith('rule:') && t.toLowerCase() !== activeRule.name.toLowerCase()
-                                     );
-                                     const fallbackCat = categories.find((c) => c.id !== activeRule.categoryId)?.id || 'cat-groceries';
-                                     updateTransaction(tx.id, {
-                                       category: fallbackCat,
-                                       tags: cleanedTags,
-                                     });
-                                   }}
-                                   className="px-1.5 py-0.5 text-zinc-400 hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors text-[10px] flex items-center gap-1 font-semibold"
-                                   title={`Unlink "${tx.title}" from ${activeRule.name} (keeps transaction in your ledger)`}
-                                 >
-                                   <X className="w-3 h-3" />
-                                   <span>Unlink</span>
-                                 </button>
-
-                                 {/* Permanent Delete */}
-                                 <button
-                                   type="button"
-                                   onClick={() => {
-                                     if (window.confirm(`Permanently delete "${tx.title}" from your database?`)) {
-                                       deleteTransaction(tx.id);
-                                     }
-                                   }}
-                                   className="text-zinc-500 hover:text-[#ff5f5f] p-1 transition-colors"
-                                   title="Delete permanently from database"
-                                 >
-                                   <Trash2 className="w-3 h-3" />
-                                 </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-zinc-600 italic text-[11px] font-mono">No purchases</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right whitespace-nowrap font-mono">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setQuickLogDate(rec.date);
-                          setQuickLogModalOpen(true);
-                        }}
-                        className="px-2.5 py-1 bg-white/5 hover:bg-[#c1ff72] hover:text-black text-zinc-300 border border-white/10 rounded-lg text-[10px] font-bold transition-all inline-flex items-center gap-1 uppercase tracking-wider"
-                        title={`Log spend for ${rec.date}`}
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Log Spend</span>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Manual Link Unlinked Expenses to Active Prorated Tracker */}
-      {activeRule && (
-        <div className="bg-[#111114] border border-white/[0.08] rounded-2xl p-5 backdrop-blur-md font-mono space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#c1ff72]/20 text-[#c1ff72] flex items-center justify-center font-bold">
-                <Link2 className="w-4 h-4 text-[#c1ff72]" />
-              </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-white uppercase tracking-tight">
-                  Connect Existing Expenses to {activeRule.name}
-                </h3>
-                <p className="text-[11px] text-zinc-400">
-                  Manually link unallocated transactions from your ledger directly to this prorated limit tracker
-                </p>
-              </div>
-            </div>
-            <span className="text-[10px] text-zinc-300 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 font-bold">
-              {unlinkedMonthTransactions.length} Unlinked Item(s)
-            </span>
-          </div>
-
-          {unlinkedMonthTransactions.length === 0 ? (
-            <p className="text-xs text-zinc-500 italic p-3 rounded-xl bg-white/[0.02] border border-white/5 text-center">
-              All expense transactions for {getMonthName(selectedMonth)} are linked to this tracker or categorized.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto pr-1">
-              {unlinkedMonthTransactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.06] flex items-center justify-between gap-3 text-xs"
-                >
-                  <div className="truncate">
-                    <div className="font-bold text-white truncate">{tx.title}</div>
-                    <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
-                      {tx.date} • {formatCurrency(tx.amount, settings.currency)}
-                    </div>
-                  </div>
+                    {calc.status}
+                  </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      const existingTags = tx.tags || [];
-                      const ruleTag = `rule:${activeRule.id}`;
-                      const nameTag = activeRule.name.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-                      const newTags = Array.from(new Set([...existingTags, ruleTag, nameTag]));
-                      updateTransaction(tx.id, {
-                        category: activeRule.categoryId || tx.category,
-                        tags: newTags,
-                      });
-                    }}
-                    className="shrink-0 px-3 py-1.5 bg-[#c1ff72]/15 hover:bg-[#c1ff72] text-[#c1ff72] hover:text-black font-extrabold rounded-lg text-[10px] border border-[#c1ff72]/30 transition-all uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_10px_rgba(193,255,114,0.15)]"
+                    onClick={() => deleteProratedRule(calc.rule.id)}
+                    className="p-1 text-zinc-500 hover:text-rose-400 rounded"
+                    title="Delete rule"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Link to {activeRule.name}</span>
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              ))}
+              </div>
+
+              {/* Highlight Daily Allowance Box */}
+              <div className="p-3.5 bg-gradient-to-r from-zinc-900 to-[#121215] border border-zinc-800 rounded-lg flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] text-zinc-400 uppercase tracking-wider block">
+                    Remaining Daily Limit
+                  </span>
+                  <div className="text-2xl font-extrabold text-[#c1ff72] mt-0.5">
+                    {formatCurrency(calc.actualDailyLimit, settings.currency)}
+                    <span className="text-xs font-normal text-zinc-400"> / day</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveSpendRule(calc.rule)}
+                  className="px-3 py-1.5 text-xs font-semibold text-black bg-[#c1ff72] hover:bg-[#b0f25e] rounded-lg transition-all flex items-center gap-1"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Log Spend</span>
+                </button>
+              </div>
+
+              {/* Progress & Breakdown */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-zinc-400">
+                    Spent: <strong className="text-white">{formatCurrency(calc.totalSpent, settings.currency)}</strong>
+                  </span>
+                  <span className="text-zinc-400">
+                    Cap: <strong className="text-white">{formatCurrency(calc.effectiveBudget, settings.currency)}</strong>
+                  </span>
+                </div>
+                <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${
+                      calc.percentSpent >= 100 ? 'bg-rose-500' : 'bg-[#c1ff72]'
+                    }`}
+                    style={{ width: `${Math.min(100, calc.percentSpent)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[11px] text-zinc-500">
+                  <span>Spent Today: {formatCurrency(calc.spentToday, settings.currency)}</span>
+                  <span>Remaining in Month: {formatCurrency(calc.remainingBudget, settings.currency)}</span>
+                </div>
+              </div>
+
+              {/* Tags & Rollover Status */}
+              <div className="pt-2 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px]">Rollover:</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateProratedRule(calc.rule.id, {
+                        rolloverEnabled: !calc.rule.rolloverEnabled,
+                      })
+                    }
+                    className={`px-2 py-0.5 rounded text-[10px] font-medium border ${
+                      calc.rule.rolloverEnabled
+                        ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                        : 'bg-zinc-900 text-zinc-500 border-zinc-800'
+                    }`}
+                  >
+                    {calc.rule.rolloverEnabled ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+
+                {calc.rule.targetTags && calc.rule.targetTags.length > 0 && (
+                  <div className="flex gap-1">
+                    {calc.rule.targetTags.map((t) => (
+                      <span key={t} className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+          ))}
         </div>
       )}
 
-      {/* Streamlined Prorated Quick Spend Modal */}
-      <LogProratedSpendModal
-        isOpen={quickLogModalOpen}
-        onClose={() => setQuickLogModalOpen(false)}
-        rule={activeRule}
-        defaultDate={quickLogDate}
-      />
+      {activeSpendRule && (
+        <LogProratedSpendModal
+          isOpen={Boolean(activeSpendRule)}
+          onClose={() => setActiveSpendRule(null)}
+          rule={activeSpendRule}
+        />
+      )}
     </div>
   );
 };
-
