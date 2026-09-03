@@ -28,15 +28,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenAddTransaction,
   onOpenAddProrated,
 }) => {
-  const { transactions, categories, proratedRules, savingsGoals, debts, settings } = useExpense();
+  const { transactions, categories, proratedRules, proratedSpends, savingsGoals, debts, settings } = useExpense();
   const { openModal } = useModal();
   const navigate = useNavigate();
 
   const handleNavigate = (tab: ActiveTab) => {
     if (onNavigateTab) {
       onNavigateTab(tab);
+    } else {
+      const paths: Record<string, string> = {
+        transactions: '/transactions',
+        prorated: '/prorated',
+        budgets: '/budgets',
+        savings_debt: '/savings-debt',
+        reports: '/reports',
+        categories: '/categories',
+        trash: '/trash',
+      };
+      if (paths[tab]) navigate(paths[tab]);
     }
-    navigate(tab === 'savings_debt' ? '/savings-debt' : `/${tab}`);
   };
 
   const handleAddTransaction = () => {
@@ -55,11 +65,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  const currentMonth = settings.selectedMonth || new Date().toISOString().slice(0, 7);
+  const currentMonthStr = settings.selectedMonth || getCurrentMonthString();
 
   const monthlyTransactions = useMemo(() => {
-    return transactions.filter((t) => t.date.startsWith(currentMonth));
-  }, [transactions, currentMonth]);
+    return transactions.filter((t) => t.date.startsWith(currentMonthStr));
+  }, [transactions, currentMonthStr]);
 
   const totalIncome = useMemo(() => {
     return monthlyTransactions
@@ -77,8 +87,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Prorated rules overview
   const proratedCalculations = useMemo(() => {
-    return proratedRules.map((rule) => calculateProratedRule(rule, transactions, new Date()));
-  }, [proratedRules, transactions]);
+    return proratedRules.map((rule) => calculateProratedRule(rule, transactions, proratedSpends, new Date()));
+  }, [proratedRules, transactions, proratedSpends]);
 
   // Recent transactions (last 6)
   const recentTransactions = useMemo(() => {

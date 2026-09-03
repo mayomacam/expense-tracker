@@ -15,10 +15,11 @@ export const LogProratedSpendModal: React.FC<LogProratedSpendModalProps> = ({
   onClose,
   rule,
 }) => {
-  const { addTransaction, settings, categories } = useExpense();
+  const { addProratedSpend, settings } = useExpense();
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(getCurrentDateString());
+  const [addToMainTransactions, setAddToMainTransactions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -29,25 +30,19 @@ export const LogProratedSpendModal: React.FC<LogProratedSpendModalProps> = ({
 
     try {
       setIsSubmitting(true);
-      const category = rule.categoryId || categories[0]?.id || 'food';
-      const tags = rule.targetTags && rule.targetTags.length > 0 ? [...rule.targetTags] : ['prorated'];
-
-      await addTransaction({
+      await addProratedSpend({
+        ruleId: rule.id,
         title: title.trim(),
         amount: Number(amount),
-        type: 'expense',
-        category,
         date,
-        tags,
-        paymentMethod: 'credit_card',
-        notes: `Quick logged against prorated rule: ${rule.name} [prorated:${rule.id}]`,
-        isRecurring: false,
-        proratedRuleId: rule.id,
+        notes: `Quick logged against prorated rule: ${rule.name}`,
+        addToMainTransactions,
       });
 
       onClose();
       setTitle('');
       setAmount('');
+      setAddToMainTransactions(false);
     } catch (err) {
       console.error('Error logging prorated spend:', err);
     } finally {
@@ -113,6 +108,19 @@ export const LogProratedSpendModal: React.FC<LogProratedSpendModalProps> = ({
                 className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c1ff72]"
               />
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1 pb-1">
+            <input
+              type="checkbox"
+              id="addToMainTransactions"
+              checked={addToMainTransactions}
+              onChange={(e) => setAddToMainTransactions(e.target.checked)}
+              className="w-4 h-4 rounded bg-zinc-900 border-zinc-700 text-[#c1ff72] focus:ring-0 cursor-pointer accent-[#c1ff72]"
+            />
+            <label htmlFor="addToMainTransactions" className="text-xs text-zinc-300 cursor-pointer select-none">
+              Also record in main Transactions ledger
+            </label>
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-[#27272a]">

@@ -40,6 +40,17 @@ export interface ProratedBudgetRule {
   notes?: string;
 }
 
+export interface ProratedSpend {
+  id: string;
+  ruleId: string;
+  title: string;
+  amount: number;
+  date: string;
+  notes?: string;
+  addToMainTransactions?: boolean;
+  created_at?: string;
+}
+
 export interface SavingsHistoryItem {
   id: string;
   goalId?: string;

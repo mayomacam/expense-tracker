@@ -12,7 +12,7 @@ interface ProratedBudgetViewProps {
 }
 
 export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({ onOpenAddProrated }) => {
-  const { proratedRules, transactions, deleteProratedRule, updateProratedRule, settings } = useExpense();
+  const { proratedRules, transactions, proratedSpends, deleteProratedRule, updateProratedRule, deleteProratedSpend, settings } = useExpense();
   const { openModal } = useModal();
   const [activeSpendRule, setActiveSpendRule] = useState<ProratedBudgetRule | null>(null);
 
@@ -25,8 +25,8 @@ export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({ onOpenAd
   };
 
   const calculations = useMemo(() => {
-    return proratedRules.map((rule) => calculateProratedRule(rule, transactions, new Date()));
-  }, [proratedRules, transactions]);
+    return proratedRules.map((rule) => calculateProratedRule(rule, transactions, proratedSpends, new Date()));
+  }, [proratedRules, transactions, proratedSpends]);
 
   return (
     <div className="space-y-6">
@@ -189,6 +189,57 @@ export const ProratedBudgetView: React.FC<ProratedBudgetViewProps> = ({ onOpenAd
                   </div>
                 )}
               </div>
+
+              {/* Logged Spends List for this rule */}
+              {(() => {
+                const ruleSpendsList = proratedSpends.filter((s) => s.ruleId === calc.rule.id);
+                if (ruleSpendsList.length === 0) return null;
+                return (
+                  <div className="pt-3 border-t border-zinc-800/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-zinc-300 uppercase tracking-wider">
+                        Recent Logged Spends ({ruleSpendsList.length})
+                      </span>
+                      <span className="text-[10px] text-[#c1ff72] bg-[#c1ff72]/10 px-2 py-0.5 rounded font-mono">
+                        ⚡ Dedicated Table
+                      </span>
+                    </div>
+                    <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                      {ruleSpendsList.map((s) => (
+                        <div
+                          key={s.id}
+                          className="flex items-center justify-between p-2 rounded bg-zinc-900/60 border border-zinc-800 text-xs"
+                        >
+                          <div>
+                            <div className="font-medium text-white flex items-center gap-1.5">
+                              <span>{s.title}</span>
+                              {s.addToMainTransactions && (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                  +Ledger
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-zinc-400 font-mono">{s.date}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-rose-400 font-mono">
+                              -{formatCurrency(s.amount, settings.currency)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => deleteProratedSpend(s.id)}
+                              className="text-zinc-500 hover:text-rose-400 p-0.5"
+                              title="Delete spend entry"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>

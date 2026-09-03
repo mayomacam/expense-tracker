@@ -46,12 +46,14 @@ Where transaction $t$ is explicitly linked to the prorated rule via `proratedRul
 
 ---
 
-## 1.5 Strict Domain Isolation Guarantees
+## 1.5 Dedicated Database Table & Strict Domain Isolation Guarantees
 
 To ensure complete financial independence:
-1. **General Expenses Immunity**: General transactions (e.g. rent, groceries, family outings, utility bills) **do not** reduce your daily prorated allowance unless explicitly allocated to a prorated rule via `proratedRuleId`.
-2. **Category Budget Immunity**: Spends logged under a Prorated Daily Budget rule **do not** count toward or pollute general monthly category budgets (`catSpentMap`), Dashboard Total Spent, or Net Surplus.
-3. **Dedicated Tracking**: Prorated daily budgets serve as an isolated daily pocket-money calculator with its own allowable limit curve and pace indicators.
+1. **Dedicated Database Table (`prorated_spends`)**: All daily prorated spends are stored in a separate, isolated SQLite table (`prorated_spends`), completely distinct from general transactions.
+2. **Optional Ledger Mirroring**: When logging a spend against a prorated rule, users can optionally check *"Also record in main Transactions ledger"*. By default (unchecked), the spend remains 100% isolated to the prorated budget and does not appear in general transactions.
+3. **General Expenses Immunity**: General transactions (e.g. rent, groceries, family outings, utility bills) **do not** reduce your daily prorated allowance unless explicitly allocated to a prorated rule.
+4. **Category Budget Immunity**: Spends logged under a Prorated Daily Budget rule **do not** count toward or pollute general monthly category budgets (`catSpentMap`), Dashboard Total Spent, or Net Surplus.
+5. **Dedicated Tracking**: Prorated daily budgets serve as an isolated daily pocket-money calculator with its own allowable limit curve and pace indicators.
 
 ## 2. Real-Time Pace Evaluation
 

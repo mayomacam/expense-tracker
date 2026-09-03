@@ -1,4 +1,4 @@
-import { Transaction, ProratedBudgetRule } from '../types';
+import { Transaction, ProratedBudgetRule, ProratedSpend } from '../types';
 import { getDaysInMonth } from './formatters';
 
 export interface ProratedCalculationResult {
@@ -24,6 +24,7 @@ export interface ProratedCalculationResult {
 export function calculateProratedRule(
   rule: ProratedBudgetRule,
   transactions: Transaction[],
+  proratedSpends: ProratedSpend[] = [],
   targetDate: Date = new Date()
 ): ProratedCalculationResult {
   const currentYearMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
@@ -36,32 +37,42 @@ export function calculateProratedRule(
 
   const effectiveBudget = rule.monthlyMaxSpend + (rule.rolloverEnabled ? (rule.rolloverAmount || 0) : 0);
 
-  // Filter transactions belonging ONLY to this independent prorated rule
-  const matchingTransactions = transactions.filter((tx) => {
+  // Filter dedicated prorated spends from prorated_spends table
+  const ruleSpends = proratedSpends.filter(
+    (s) => s.ruleId === rule.id && s.date.startsWith(ruleMonth)
+  );
+
+  // Filter transactions belonging explicitly to this prorated rule (excluding mirrored auto-transactions to prevent double counting)
+  const ruleTxMatches = transactions.filter((tx) => {
     if (tx.type !== 'expense') return false;
     if (!tx.date.startsWith(ruleMonth)) return false;
+    if (tx.id.startsWith('tx-prorated-')) return false;
 
-    // Prorated budget rules are completely independent from general category/tag expenses.
-    // ONLY transactions explicitly allocated to this prorated rule count towards it.
-    if (tx.proratedRuleId) {
-      return tx.proratedRuleId === rule.id;
-    }
-    if (tx.notes && tx.notes.includes(`[prorated:${rule.id}]`)) {
-      return true;
-    }
+    if (tx.proratedRuleId && tx.proratedRuleId === rule.id) return true;
+    if (tx.notes && tx.notes.includes(`[prorated:${rule.id}]`)) return true;
     return false;
   });
 
-  const totalSpent = matchingTransactions.reduce((acc, tx) => acc + tx.amount, 0);
+  const spendTotal = ruleSpends.reduce((acc, s) => acc + s.amount, 0);
+  const txTotal = ruleTxMatches.reduce((acc, tx) => acc + tx.amount, 0);
+  const totalSpent = spendTotal + txTotal;
+
   const remainingBudget = effectiveBudget - totalSpent;
 
   const nominalDailyLimit = effectiveBudget / totalDays;
   const actualDailyLimit = Math.max(0, remainingBudget / remainingDays);
 
   const todayStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
-  const spentToday = matchingTransactions
+  
+  const spendsToday = ruleSpends
+    .filter((s) => s.date === todayStr)
+    .reduce((acc, s) => acc + s.amount, 0);
+  
+  const txsToday = ruleTxMatches
     .filter((tx) => tx.date === todayStr)
     .reduce((acc, tx) => acc + tx.amount, 0);
+
+  const spentToday = spendsToday + txsToday;
 
   const remainingToday = Math.max(0, actualDailyLimit - spentToday);
   const percentSpent = effectiveBudget > 0 ? (totalSpent / effectiveBudget) * 100 : 0;

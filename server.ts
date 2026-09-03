@@ -8,6 +8,7 @@ import {
   deletedTransactionRepo,
   categoryRepo,
   proratedRuleRepo,
+  proratedSpendRepo,
   savingsRepo,
   debtRepo,
   recurringRepo,
@@ -287,6 +288,46 @@ async function startServer() {
   app.delete('/api/prorated-rules/:id', (req, res) => {
     try {
       proratedRuleRepo.delete(req.params.id);
+      res.json({ success: true, id: req.params.id });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Prorated Spends (Dedicated Isolated Spends Table)
+  app.get('/api/prorated-spends', (req, res) => {
+    try {
+      const ruleId = req.query.ruleId as string | undefined;
+      const spends = ruleId ? proratedSpendRepo.getByRuleId(ruleId) : proratedSpendRepo.getAll();
+      res.json(spends);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/prorated-spends', (req, res) => {
+    try {
+      const body = req.body;
+      const id = body.id || `pspend-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const newSpend = {
+        id,
+        ruleId: body.ruleId,
+        title: body.title,
+        amount: Number(body.amount),
+        date: body.date,
+        notes: body.notes || undefined,
+        addToMainTransactions: Boolean(body.addToMainTransactions),
+      };
+      const created = proratedSpendRepo.create(newSpend);
+      res.status(201).json(created);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/prorated-spends/:id', (req, res) => {
+    try {
+      proratedSpendRepo.delete(req.params.id);
       res.json({ success: true, id: req.params.id });
     } catch (err: any) {
       res.status(500).json({ error: err.message });

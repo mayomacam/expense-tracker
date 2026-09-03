@@ -20,6 +20,7 @@ interface ExpenseContextType {
   deletedTransactions: Transaction[];
   categories: Category[];
   proratedRules: ProratedBudgetRule[];
+  proratedSpends: ProratedSpend[];
   savingsGoals: SavingsGoal[];
   debts: DebtItem[];
   recurringItems: RecurringItem[];
@@ -48,10 +49,12 @@ interface ExpenseContextType {
   updateCategory: (id: string, cat: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
 
-  // Prorated Rules
+  // Prorated Rules & Spends
   addProratedRule: (rule: Omit<ProratedBudgetRule, 'id'>) => Promise<ProratedBudgetRule>;
   updateProratedRule: (id: string, rule: Partial<ProratedBudgetRule>) => Promise<void>;
   deleteProratedRule: (id: string) => Promise<void>;
+  addProratedSpend: (spend: Omit<ProratedSpend, 'id'>) => Promise<ProratedSpend>;
+  deleteProratedSpend: (id: string) => Promise<void>;
 
   // Savings Goals
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'currentAmount' | 'history'>) => Promise<SavingsGoal>;
@@ -94,6 +97,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [deletedTransactions, setDeletedTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [proratedRules, setProratedRules] = useState<ProratedBudgetRule[]>([]);
+  const [proratedSpends, setProratedSpends] = useState<ProratedSpend[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [debts, setDebts] = useState<DebtItem[]>([]);
   const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
@@ -139,11 +143,12 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       setIsLoading(true);
       setError(null);
-      const [txs, delTxs, cats, rules, goals, dbs, recs, sets, readIds, status] = await Promise.all([
+      const [txs, delTxs, cats, rules, spends, goals, dbs, recs, sets, readIds, status] = await Promise.all([
         api.getTransactions().catch(() => []),
         api.getDeletedTransactions().catch(() => []),
         api.getCategories().catch(() => []),
         api.getProratedRules().catch(() => []),
+        api.getProratedSpends().catch(() => []),
         api.getSavingsGoals().catch(() => []),
         api.getDebts().catch(() => []),
         api.getRecurring().catch(() => []),
@@ -165,6 +170,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setDeletedTransactions(delTxs);
       setCategories(cats);
       setProratedRules(rules);
+      setProratedSpends(spends);
       setSavingsGoals(goals);
       setDebts(dbs);
       setRecurringItems(recs);
@@ -344,6 +350,22 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const deleteProratedRule = async (id: string) => {
     await api.deleteProratedRule(id);
     setProratedRules((prev) => prev.filter((r) => r.id !== id));
+    setProratedSpends((prev) => prev.filter((s) => s.ruleId !== id));
+  };
+
+  const addProratedSpend = async (spend: Omit<ProratedSpend, 'id'>) => {
+    const created = await api.createProratedSpend(spend);
+    setProratedSpends((prev) => [created, ...prev]);
+    if (created.addToMainTransactions) {
+      await refreshFromDb();
+    }
+    return created;
+  };
+
+  const deleteProratedSpend = async (id: string) => {
+    await api.deleteProratedSpend(id);
+    setProratedSpends((prev) => prev.filter((s) => s.id !== id));
+    await refreshFromDb();
   };
 
   const addSavingsGoal = async (goal: Omit<SavingsGoal, 'id' | 'currentAmount' | 'history'>) => {
@@ -536,6 +558,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         deletedTransactions,
         categories,
         proratedRules,
+        proratedSpends,
         savingsGoals,
         debts,
         recurringItems,
@@ -559,6 +582,8 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addProratedRule,
         updateProratedRule,
         deleteProratedRule,
+        addProratedSpend,
+        deleteProratedSpend,
         addSavingsGoal,
         updateSavingsGoal,
         deleteSavingsGoal,

@@ -67,6 +67,14 @@ export const api = {
   deleteProratedRule: (id: string) =>
     fetch(`/api/prorated-rules/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; id: string }>),
 
+  // Prorated Spends (Dedicated Table)
+  getProratedSpends: (ruleId?: string) =>
+    fetch(ruleId ? `/api/prorated-spends?ruleId=${ruleId}` : '/api/prorated-spends').then(handleResponse<ProratedSpend[]>),
+  createProratedSpend: (spend: Omit<ProratedSpend, 'id'>) =>
+    fetch('/api/prorated-spends', { method: 'POST', headers: jsonHeaders, body: JSON.stringify(spend) }).then(handleResponse<ProratedSpend>),
+  deleteProratedSpend: (id: string) =>
+    fetch(`/api/prorated-spends/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; id: string }>),
+
   // Savings Goals
   getSavingsGoals: () => fetch('/api/savings-goals').then(handleResponse<SavingsGoal[]>),
   createSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'currentAmount' | 'history'>) =>
