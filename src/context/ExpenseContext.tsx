@@ -215,8 +215,8 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     }
 
-    // Category monthly budget alerts
-    const monthlyExpenses = transactions.filter((t) => t.type === 'expense' && t.date.startsWith(currentMonth));
+    // Category monthly budget alerts (excluding isolated prorated rule spends)
+    const monthlyExpenses = transactions.filter((t) => t.type === 'expense' && t.date.startsWith(currentMonth) && !t.proratedRuleId);
     const catSpentMap: Record<string, number> = {};
     for (const tx of monthlyExpenses) {
       catSpentMap[tx.category] = (catSpentMap[tx.category] || 0) + tx.amount;

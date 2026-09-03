@@ -132,7 +132,7 @@ export function generateMonthlyReportCSV(
   monthTransactions.forEach((t) => {
     if (t.type === 'income') {
       totalIncome += t.amount;
-    } else {
+    } else if (!t.proratedRuleId) {
       totalExpense += t.amount;
       if (!categorySpending[t.category]) {
         categorySpending[t.category] = { spent: 0, budget: 0 };
@@ -148,13 +148,13 @@ export function generateMonthlyReportCSV(
   lines.push(`MONTHLY BUDGET & EXPENSE REPORT - ${getMonthName(month).toUpperCase()}`);
   lines.push(`Generated On,${new Date().toISOString()}`);
   lines.push('');
-  lines.push('--- EXECUTIVE SUMMARY ---');
+  lines.push('--- EXECUTIVE SUMMARY (GENERAL EXPENSES) ---');
   lines.push(`Total Income,${currency}${totalIncome.toFixed(2)}`);
-  lines.push(`Total Expenses,${currency}${totalExpense.toFixed(2)}`);
+  lines.push(`Total General Expenses,${currency}${totalExpense.toFixed(2)}`);
   lines.push(`Net Savings,${currency}${netSavings.toFixed(2)}`);
   lines.push(`Savings Rate,${savingsRate}%`);
   lines.push('');
-  lines.push('--- CATEGORY BREAKDOWN ---');
+  lines.push('--- CATEGORY BREAKDOWN (GENERAL EXPENSES) ---');
   lines.push('Category,Allocated Budget,Actual Spent,Remaining / Over,Status');
 
   Object.entries(categorySpending).forEach(([catId, data]) => {
@@ -168,18 +168,14 @@ export function generateMonthlyReportCSV(
   });
 
   lines.push('');
-  lines.push('--- PRORATED DAILY SPEND TRACKERS ---');
+  lines.push('--- PRORATED DAILY SPEND TRACKERS (ISOLATED) ---');
   lines.push('Item/Rule Name,Monthly Max Spend,Daily Prorated Limit,Days In Month,Total Spent,Status');
 
   const daysInMon = getDaysInMonth(month);
   proratedRules.forEach((rule) => {
     const dailyLimit = (rule.monthlyMaxSpend + (rule.rolloverAmount || 0)) / daysInMon;
     const ruleTransactions = monthTransactions.filter(
-      (t) =>
-        t.type === 'expense' &&
-        (t.category === rule.categoryId ||
-          t.title.toLowerCase().includes(rule.name.toLowerCase()) ||
-          (rule.targetTags && rule.targetTags.some((tag) => t.tags?.includes(tag))))
+      (t) => t.type === 'expense' && t.proratedRuleId === rule.id
     );
     const totalSpent = ruleTransactions.reduce((sum, t) => sum + t.amount, 0);
     const effBudget = rule.monthlyMaxSpend + (rule.rolloverAmount || 0);
@@ -220,7 +216,7 @@ export function generatePDFReportWindow(
     .filter((t) => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
   const totalExpense = monthTxs
-    .filter((t) => t.type === 'expense')
+    .filter((t) => t.type === 'expense' && !t.proratedRuleId)
     .reduce((sum, t) => sum + t.amount, 0);
   const netBalance = totalIncome - totalExpense;
 

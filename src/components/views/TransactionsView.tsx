@@ -23,6 +23,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ onOpenAddTra
   };
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState<'all' | 'income' | 'expense'>('all');
+  const [selectedScope, setSelectedScope] = useState<'all' | 'general' | 'prorated'>('all');
   const [selectedPayment, setSelectedPayment] = useState('all');
 
   const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
@@ -39,9 +40,11 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ onOpenAddTra
       if (selectedCategory !== 'all' && tx.category !== selectedCategory) return false;
       if (selectedType !== 'all' && tx.type !== selectedType) return false;
       if (selectedPayment !== 'all' && tx.paymentMethod !== selectedPayment) return false;
+      if (selectedScope === 'general' && tx.proratedRuleId) return false;
+      if (selectedScope === 'prorated' && !tx.proratedRuleId) return false;
       return true;
     });
-  }, [transactions, search, selectedCategory, selectedType, selectedPayment]);
+  }, [transactions, search, selectedCategory, selectedType, selectedPayment, selectedScope]);
 
   const handleExportCSV = () => {
     const csv = generateTransactionsCSV(filteredTransactions, categories, settings.currency);
@@ -79,7 +82,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ onOpenAddTra
       </div>
 
       {/* Search and Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-[#16161a] border border-[#27272a] p-3 rounded-xl">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 bg-[#16161a] border border-[#27272a] p-3 rounded-xl">
         <div className="sm:col-span-2 relative">
           <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
           <input
@@ -117,6 +120,18 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ onOpenAddTra
             <option value="income">Income Only</option>
           </select>
         </div>
+
+        <div>
+          <select
+            value={selectedScope}
+            onChange={(e) => setSelectedScope(e.target.value as any)}
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-[#c1ff72]"
+          >
+            <option value="all">All Scopes</option>
+            <option value="general">General Expenses Only</option>
+            <option value="prorated">⚡ Prorated Spends Only</option>
+          </select>
+        </div>
       </div>
 
       {/* Transactions Table */}
@@ -147,7 +162,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ onOpenAddTra
                         {formatReadableDate(tx.date)}
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-semibold text-white">{tx.title}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white">{tx.title}</span>
+                          {tx.proratedRuleId && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 flex items-center gap-1">
+                              ⚡ Isolated Prorated
+                            </span>
+                          )}
+                        </div>
                         {tx.tags && tx.tags.length > 0 && (
                           <div className="flex gap-1 mt-1 flex-wrap">
                             {tx.tags.map((tag) => (

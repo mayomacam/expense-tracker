@@ -29,7 +29,7 @@ export const BudgetsAndRecurringView: React.FC = () => {
 
   const currentMonth = settings.selectedMonth || new Date().toISOString().slice(0, 7);
 
-  const monthlyExpenses = transactions.filter((t) => t.type === 'expense' && t.date.startsWith(currentMonth));
+  const monthlyExpenses = transactions.filter((t) => t.type === 'expense' && t.date.startsWith(currentMonth) && !t.proratedRuleId);
   const catSpentMap: Record<string, number> = {};
   for (const tx of monthlyExpenses) {
     catSpentMap[tx.category] = (catSpentMap[tx.category] || 0) + tx.amount;

@@ -26,16 +26,16 @@ export const MonthlyReportView: React.FC = () => {
 
   const totalExpense = useMemo(() => {
     return monthlyTransactions
-      .filter((t) => t.type === 'expense')
+      .filter((t) => t.type === 'expense' && !t.proratedRuleId)
       .reduce((sum, t) => sum + t.amount, 0);
   }, [monthlyTransactions]);
 
   const netSavings = totalIncome - totalExpense;
 
-  // Category breakdown
+  // Category breakdown (General Expenses only)
   const categoryBreakdown = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const tx of monthlyTransactions.filter((t) => t.type === 'expense')) {
+    for (const tx of monthlyTransactions.filter((t) => t.type === 'expense' && !t.proratedRuleId)) {
       map[tx.category] = (map[tx.category] || 0) + tx.amount;
     }
     return Object.entries(map).sort((a, b) => b[1] - a[1]);

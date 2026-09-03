@@ -69,7 +69,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const totalExpense = useMemo(() => {
     return monthlyTransactions
-      .filter((t) => t.type === 'expense')
+      .filter((t) => t.type === 'expense' && !t.proratedRuleId)
       .reduce((sum, t) => sum + t.amount, 0);
   }, [monthlyTransactions]);
 
