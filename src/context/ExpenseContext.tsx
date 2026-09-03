@@ -198,7 +198,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Prorated rules alerts
     for (const rule of proratedRules) {
       if (rule.month && rule.month !== currentMonth) continue;
-      const calc = calculateProratedRule(rule, transactions, targetDate);
+      const calc = calculateProratedRule(rule, transactions, proratedSpends, targetDate);
 
       if (calc.status === 'overspent') {
         list.push({
@@ -275,7 +275,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     return list;
-  }, [proratedRules, transactions, categories, debts, settings, readAlertIds, serviceAlerts]);
+  }, [proratedRules, transactions, proratedSpends, categories, debts, settings, readAlertIds, serviceAlerts]);
 
   const unreadAlertCount = useMemo(() => alerts.filter((a) => !a.isRead).length, [alerts]);
 

@@ -65,11 +65,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  const currentMonthStr = settings.selectedMonth || getCurrentMonthString();
+  const currentMonth = settings.selectedMonth || getCurrentMonthString();
 
   const monthlyTransactions = useMemo(() => {
-    return transactions.filter((t) => t.date.startsWith(currentMonthStr));
-  }, [transactions, currentMonthStr]);
+    return transactions.filter((t) => t.date.startsWith(currentMonth));
+  }, [transactions, currentMonth]);
 
   const totalIncome = useMemo(() => {
     return monthlyTransactions
