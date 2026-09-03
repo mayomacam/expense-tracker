@@ -1,6 +1,7 @@
 import React from 'react';
-import { Menu, Bell, Database, Plus, Sparkles, RefreshCw } from 'lucide-react';
+import { Menu, Bell, Database, Plus, RefreshCw } from 'lucide-react';
 import { useExpense } from '../context/ExpenseContext';
+import { ThemeToggle } from './common/ThemeToggle';
 
 interface NavbarProps {
   onOpenSidebar: () => void;
@@ -15,7 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNotifications,
   onOpenSqliteManager,
 }) => {
-  const { unreadAlertCount, settings, refreshFromDb, isLoading } = useExpense();
+  const { unreadAlertCount, refreshFromDb, isLoading } = useExpense();
 
   return (
     <header className="h-16 bg-[#111114] border-b border-[#27272a] px-4 md:px-6 flex items-center justify-between sticky top-0 z-30">
@@ -44,6 +45,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        <ThemeToggle />
+
         <button
           type="button"
           onClick={() => refreshFromDb()}
