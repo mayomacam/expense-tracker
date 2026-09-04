@@ -14,7 +14,7 @@ import { useExpense } from '../../context/ExpenseContext';
 import { useModal } from '../../context/ModalContext';
 import { ActiveTab } from '../../types';
 import { calculateProratedRule } from '../../utils/budgetCalculations';
-import { formatCurrency, formatReadableDate } from '../../utils/formatters';
+import { formatCurrency, formatReadableDate, getCurrentYearMonth } from '../../utils/formatters';
 import { CategoryIcon } from '../common/CategoryIcon';
 
 interface DashboardViewProps {
@@ -35,18 +35,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const handleNavigate = (tab: ActiveTab) => {
     if (onNavigateTab) {
       onNavigateTab(tab);
-    } else {
-      const paths: Record<string, string> = {
-        transactions: '/transactions',
-        prorated: '/prorated',
-        budgets: '/budgets',
-        savings_debt: '/savings-debt',
-        reports: '/reports',
-        categories: '/categories',
-        trash: '/trash',
-      };
-      if (paths[tab]) navigate(paths[tab]);
     }
+    const route = tab === 'savings_debt' ? '/savings-debt' : `/${tab}`;
+    navigate(route);
   };
 
   const handleAddTransaction = () => {
@@ -65,7 +56,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  const currentMonth = settings.selectedMonth || getCurrentMonthString();
+  const currentMonth = settings.selectedMonth || getCurrentYearMonth();
 
   const monthlyTransactions = useMemo(() => {
     return transactions.filter((t) => t.date.startsWith(currentMonth));

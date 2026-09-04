@@ -2,12 +2,15 @@ import {
   Transaction,
   Category,
   ProratedBudgetRule,
+  ProratedSpend,
   SavingsGoal,
   SavingsHistoryItem,
   DebtItem,
   DebtPaymentItem,
   RecurringItem,
   UserSettings,
+  GulakPot,
+  GulakEntry,
 } from '../types';
 
 const jsonHeaders = { 'Content-Type': 'application/json' };
@@ -123,4 +126,19 @@ export const api = {
     fetch('/api/alerts/read/all', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ alertIds }) }).then(handleResponse<{ success: boolean }>),
   clearReadAlerts: () =>
     fetch('/api/alerts/read', { method: 'DELETE' }).then(handleResponse<{ success: boolean }>),
+
+  // Gulak (Piggy Bank)
+  getGulakPots: () => fetch('/api/gulak/pots').then(handleResponse<GulakPot[]>),
+  createGulakPot: (pot: Omit<GulakPot, 'id' | 'currentBalance' | 'entries'>) =>
+    fetch('/api/gulak/pots', { method: 'POST', headers: jsonHeaders, body: JSON.stringify(pot) }).then(handleResponse<GulakPot>),
+  updateGulakPot: (id: string, updates: Partial<GulakPot>) =>
+    fetch(`/api/gulak/pots/${id}`, { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(updates) }).then(handleResponse<GulakPot>),
+  deleteGulakPot: (id: string) =>
+    fetch(`/api/gulak/pots/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; id: string }>),
+  addGulakEntry: (potId: string, entry: Omit<GulakEntry, 'id' | 'potId'>) =>
+    fetch(`/api/gulak/pots/${potId}/entries`, { method: 'POST', headers: jsonHeaders, body: JSON.stringify(entry) }).then(handleResponse<GulakPot>),
+  smashGulakPot: (potId: string, note?: string) =>
+    fetch(`/api/gulak/pots/${potId}/smash`, { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ note }) }).then(handleResponse<GulakPot>),
+  deleteGulakEntry: (id: string) =>
+    fetch(`/api/gulak/entries/${id}`, { method: 'DELETE' }).then(handleResponse<{ success: boolean; pot?: GulakPot }>),
 };

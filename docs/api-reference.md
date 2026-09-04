@@ -342,3 +342,53 @@ The Expense & Prorated Budget Tracker exposes a standard RESTful HTTP API on por
 - `POST /api/alerts/read` — Dismiss single alert `{ "alertId": "..." }`.
 - `POST /api/alerts/read/all` — Dismiss multiple alerts `{ "alertIds": [...] }`.
 - `DELETE /api/alerts/read` — Reset dismissed alerts.
+
+---
+
+## 10. Gulak (Piggy Bank / Savings Pots) API
+
+Fully independent micro-savings and loose change pots engine. Gulak storage is isolated in `gulak_pots` and `gulak_entries`.
+
+### 10.1 List Gulak Pots
+- **Method**: `GET /api/gulak/pots`
+- **Response**: `200 OK` (returns array of pots with embedded `entries` array)
+
+### 10.2 Create Gulak Pot
+- **Method**: `POST /api/gulak/pots`
+- **Request Body**:
+  ```json
+  {
+    "name": "Emergency Cash Stash",
+    "targetAmount": 10000,
+    "icon": "ShieldCheck",
+    "color": "#10B981",
+    "notes": "Secret emergency cash reserves"
+  }
+  ```
+- **Response**: `201 Created`
+
+### 10.3 Add Entry (Deposit / Withdrawal)
+- **Method**: `POST /api/gulak/pots/:id/entries`
+- **Request Body**:
+  ```json
+  {
+    "type": "deposit",
+    "amount": 500,
+    "title": "Grocery Spare Change",
+    "date": "2026-09-04",
+    "notes": "Dropped 500 note in Gulak",
+    "breakdown": { "500": 1 }
+  }
+  ```
+- **Response**: `200 OK` (returns updated pot object)
+
+### 10.4 Smash Gulak Pot 🔨
+- **Method**: `POST /api/gulak/pots/:id/smash`
+- **Request Body**: `{ "note": "Cashed out for festival shopping" }`
+- **Behavior**: Empties pot balance to zero, logs a withdrawal payout entry, and returns updated pot.
+- **Response**: `200 OK`
+
+### 10.5 Delete Gulak Entry
+- **Method**: `DELETE /api/gulak/entries/:id`
+- **Response**: `200 OK` (`{ "success": true, "pot": { ... } }`)
+

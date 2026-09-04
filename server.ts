@@ -14,6 +14,7 @@ import {
   recurringRepo,
   settingsRepo,
   readAlertsRepo,
+  gulakRepo,
   getDatabaseStats,
 } from './src/server/db';
 
@@ -635,6 +636,74 @@ async function startServer() {
     try {
       readAlertsRepo.clearAll();
       res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Gulak (Piggy Bank) Endpoints
+  app.get('/api/gulak/pots', (req, res) => {
+    try {
+      const pots = gulakRepo.getAll();
+      res.json(pots);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/gulak/pots', (req, res) => {
+    try {
+      const pot = gulakRepo.create(req.body);
+      res.status(201).json(pot);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/gulak/pots/:id', (req, res) => {
+    try {
+      const updated = gulakRepo.update(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ error: 'Gulak pot not found' });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/gulak/pots/:id', (req, res) => {
+    try {
+      gulakRepo.delete(req.params.id);
+      res.json({ success: true, id: req.params.id });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/gulak/pots/:id/entries', (req, res) => {
+    try {
+      const updatedPot = gulakRepo.addEntry(req.params.id, req.body);
+      if (!updatedPot) return res.status(404).json({ error: 'Gulak pot not found' });
+      res.json(updatedPot);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/gulak/pots/:id/smash', (req, res) => {
+    try {
+      const { note } = req.body || {};
+      const updatedPot = gulakRepo.smash(req.params.id, note);
+      if (!updatedPot) return res.status(404).json({ error: 'Gulak pot not found' });
+      res.json(updatedPot);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/gulak/entries/:id', (req, res) => {
+    try {
+      const updatedPot = gulakRepo.deleteEntry(req.params.id);
+      res.json({ success: true, pot: updatedPot });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

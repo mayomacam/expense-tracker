@@ -145,12 +145,40 @@ export interface NotificationAlert {
   isRead: boolean;
 }
 
+export interface GulakEntry {
+  id: string;
+  potId: string;
+  type: 'deposit' | 'withdraw';
+  amount: number;
+  title: string;
+  date: string;
+  notes?: string;
+  breakdown?: Record<string, number>;
+  created_at?: string;
+}
+
+export interface GulakPot {
+  id: string;
+  name: string;
+  targetAmount?: number;
+  currentBalance: number;
+  icon?: string;
+  color?: string;
+  notes?: string;
+  isLocked?: boolean;
+  lockUntilDate?: string;
+  created_at?: string;
+  entries?: GulakEntry[];
+}
+
 export type ActiveTab = 
   | 'dashboard'
   | 'transactions'
   | 'prorated'
   | 'budgets'
   | 'savings_debt'
+  | 'gulak'
   | 'reports'
   | 'categories'
   | 'trash';
+

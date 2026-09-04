@@ -7,6 +7,7 @@ import {
   Scale,
   CalendarClock,
   PiggyBank,
+  Coins,
   FileBarChart,
   Tag,
   Trash2,
@@ -81,6 +82,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
     { id: 'prorated' as ActiveTab, label: 'Prorated Limits', icon: Scale },
     { id: 'budgets' as ActiveTab, label: 'Budgets & Recurring', icon: CalendarClock },
     { id: 'savings_debt' as ActiveTab, label: 'Savings & Debts', icon: PiggyBank },
+    { id: 'gulak' as ActiveTab, label: 'Gulak (गुलक)', icon: Coins },
     { id: 'reports' as ActiveTab, label: 'Reports & Export', icon: FileBarChart },
     { id: 'categories' as ActiveTab, label: 'Categories', icon: Tag },
     {

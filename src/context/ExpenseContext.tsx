@@ -3,6 +3,7 @@ import {
   Transaction,
   Category,
   ProratedBudgetRule,
+  ProratedSpend,
   SavingsGoal,
   SavingsHistoryItem,
   DebtItem,

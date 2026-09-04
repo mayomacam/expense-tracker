@@ -208,6 +208,36 @@ CREATE TABLE IF NOT EXISTS read_alerts (
 );
 ```
 
+### 2.9 `gulak_pots` & `gulak_entries`
+Fully isolated piggy banks and micro-savings logs.
+```sql
+CREATE TABLE IF NOT EXISTS gulak_pots (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  targetAmount REAL DEFAULT 0,
+  currentBalance REAL DEFAULT 0,
+  icon TEXT,
+  color TEXT,
+  notes TEXT,
+  isLocked INTEGER DEFAULT 0,
+  lockUntilDate TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS gulak_entries (
+  id TEXT PRIMARY KEY,
+  potId TEXT NOT NULL,
+  type TEXT NOT NULL,                -- 'deposit' or 'withdraw'
+  amount REAL NOT NULL,
+  title TEXT NOT NULL,
+  date TEXT NOT NULL,
+  notes TEXT,
+  breakdown TEXT DEFAULT '{}',      -- JSON note denomination breakdown e.g. {"500": 2}
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(potId) REFERENCES gulak_pots(id) ON DELETE CASCADE
+);
+```
+
 ---
 
 ## 3. Database Maintenance & Operations

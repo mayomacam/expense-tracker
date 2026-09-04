@@ -16,6 +16,7 @@ import { SavingsAndDebtView } from './components/views/SavingsAndDebtView';
 import { MonthlyReportView } from './components/views/MonthlyReportView';
 import { CategorySettingsView } from './components/views/CategorySettingsView';
 import { TrashView } from './components/views/TrashView';
+import { GulakView } from './components/views/GulakView';
 
 const AppLayout: React.FC = () => {
   const { isLoading } = useExpense();
@@ -45,6 +46,7 @@ const AppLayout: React.FC = () => {
             <Route path="/budgets" element={<BudgetsAndRecurringView />} />
             <Route path="/savings-debt" element={<SavingsAndDebtView />} />
             <Route path="/savings_debt" element={<Navigate to="/savings-debt" replace />} />
+            <Route path="/gulak" element={<GulakView />} />
             <Route path="/reports" element={<MonthlyReportView />} />
             <Route path="/categories" element={<CategorySettingsView />} />
             <Route path="/trash" element={<TrashView />} />
