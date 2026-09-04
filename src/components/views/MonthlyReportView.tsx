@@ -9,7 +9,7 @@ import {
 } from '../../utils/formatters';
 
 export const MonthlyReportView: React.FC = () => {
-  const { transactions, categories, proratedRules, savingsGoals, debts, settings } = useExpense();
+  const { transactions, categories, proratedRules, proratedSpends, savingsGoals, debts, settings } = useExpense();
   const [selectedMonth, setSelectedMonth] = useState(
     settings.selectedMonth || new Date().toISOString().slice(0, 7)
   );
@@ -49,6 +49,7 @@ export const MonthlyReportView: React.FC = () => {
       transactions,
       categories,
       proratedRules,
+      proratedSpends,
       settings.currency
     );
     downloadCSV(csv, `report-${selectedMonth}.csv`);
@@ -62,6 +63,7 @@ export const MonthlyReportView: React.FC = () => {
       proratedRules,
       savingsGoals,
       debts,
+      proratedSpends,
       settings.currency
     );
   };

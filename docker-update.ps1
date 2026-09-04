@@ -1,0 +1,1 @@
+wsl -d kali-linux docker build -t expense-tracker:latest /mnt/e/projects/expense-tracker ; wsl -d kali-linux docker rm -f expense-tracker-server ; wsl -d kali-linux docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopped -v /mnt/e/projects/expense-tracker/data:/app/data expense-tracker:latest ; wsl -d kali-linux docker image prune -f

@@ -14,7 +14,7 @@ interface ExportReportModalProps {
 }
 
 export const ExportReportModal: React.FC<ExportReportModalProps> = ({ isOpen, onClose }) => {
-  const { transactions, categories, proratedRules, savingsGoals, debts, settings } = useExpense();
+  const { transactions, categories, proratedRules, proratedSpends, savingsGoals, debts, settings } = useExpense();
 
   if (!isOpen) return null;
 
@@ -31,6 +31,7 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({ isOpen, on
       transactions,
       categories,
       proratedRules,
+      proratedSpends,
       settings.currency
     );
     downloadCSV(csv, `monthly-report-${currentMonth}.csv`);
@@ -44,6 +45,7 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({ isOpen, on
       proratedRules,
       savingsGoals,
       debts,
+      proratedSpends,
       settings.currency
     );
   };

@@ -1,4 +1,5 @@
-import { Transaction, Category, ProratedBudgetRule, SavingsGoal, DebtItem } from '../types';
+import { Transaction, Category, ProratedBudgetRule, SavingsGoal, DebtItem, ProratedSpend } from '../types';
+import { calculateProratedRule } from './budgetCalculations';
 
 export function formatCurrency(amount: number, symbol: string = '₹'): string {
   const isNegative = amount < 0;
@@ -116,6 +117,7 @@ export function generateMonthlyReportCSV(
   transactions: Transaction[],
   categories: Category[],
   proratedRules: ProratedBudgetRule[],
+  proratedSpends: ProratedSpend[] = [],
   currency: string = '₹'
 ): string {
   const monthTransactions = transactions.filter((t) => t.date.startsWith(month));
@@ -171,17 +173,11 @@ export function generateMonthlyReportCSV(
   lines.push('--- PRORATED DAILY SPEND TRACKERS (ISOLATED) ---');
   lines.push('Item/Rule Name,Monthly Max Spend,Daily Prorated Limit,Days In Month,Total Spent,Status');
 
-  const daysInMon = getDaysInMonth(month);
   proratedRules.forEach((rule) => {
-    const dailyLimit = (rule.monthlyMaxSpend + (rule.rolloverAmount || 0)) / daysInMon;
-    const ruleTransactions = monthTransactions.filter(
-      (t) => t.type === 'expense' && t.proratedRuleId === rule.id
-    );
-    const totalSpent = ruleTransactions.reduce((sum, t) => sum + t.amount, 0);
-    const effBudget = rule.monthlyMaxSpend + (rule.rolloverAmount || 0);
-    const status = totalSpent <= effBudget ? 'Within Budget' : 'Exceeded';
+    const calc = calculateProratedRule(rule, transactions, proratedSpends);
+    const statusStr = calc.status === 'overspent' ? 'OVER BUDGET' : 'Within Budget';
     lines.push(
-      `"${rule.name}",${effBudget.toFixed(2)},${dailyLimit.toFixed(2)},${daysInMon},${totalSpent.toFixed(2)},${status}`
+      `"${rule.name}",${calc.effectiveBudget.toFixed(2)},${calc.dailyLimit.toFixed(2)},${calc.daysInMonth},${calc.totalSpent.toFixed(2)},${statusStr}`
     );
   });
 
@@ -206,6 +202,7 @@ export function generatePDFReportWindow(
   proratedRules: ProratedBudgetRule[],
   savingsGoals: SavingsGoal[] = [],
   debts: DebtItem[] = [],
+  proratedSpends: ProratedSpend[] = [],
   currency: string = '₹'
 ): void {
   const monthName = getMonthName(month);
@@ -284,19 +281,15 @@ export function generatePDFReportWindow(
           <tbody>
             ${proratedRules
               .map((rule) => {
-                const daysInMon = getDaysInMonth(month);
-                const dailyLimit = (rule.monthlyMaxSpend + (rule.rolloverAmount || 0)) / daysInMon;
-                const spent = monthTxs
-                  .filter((t) => t.type === 'expense' && t.category === rule.categoryId)
-                  .reduce((sum, t) => sum + t.amount, 0);
-                const eff = rule.monthlyMaxSpend + (rule.rolloverAmount || 0);
+                const calc = calculateProratedRule(rule, transactions, proratedSpends);
+                const isOver = calc.status === 'overspent';
                 return `
                 <tr>
                   <td><strong>${rule.name}</strong></td>
-                  <td>${formatCurrency(eff, currency)}</td>
-                  <td>${formatCurrency(dailyLimit, currency)}/day</td>
-                  <td>${formatCurrency(spent, currency)}</td>
-                  <td>${spent <= eff ? 'Within Budget' : 'Exceeded'}</td>
+                  <td>${formatCurrency(calc.effectiveBudget, currency)}</td>
+                  <td>${formatCurrency(calc.dailyLimit, currency)}/day</td>
+                  <td>${formatCurrency(calc.totalSpent, currency)}</td>
+                  <td>${isOver ? '<span style="color:#c62828;font-weight:bold;">Over Budget</span>' : 'Within Budget'}</td>
                 </tr>
               `;
               })
