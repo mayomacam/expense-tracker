@@ -154,19 +154,31 @@ $$\text{Cumulative Expected Spend} = \text{Daily Allowance} \times D$$
 
 ## Docker Deployment
 
-The application includes an enterprise-grade, hardened `Dockerfile`:
+The application includes an enterprise-grade, hardened `Dockerfile` with persistent storage support:
 
+### Quick Run Commands (Port 16001 -> Container Port 3000):
+
+#### Windows WSL / Kali Linux:
 ```bash
-# Build the production Docker image
-docker build -t expense-tracker:latest .
-
-# Run container with persistent data volume
-docker run -d \
-  --name expense-tracker \
-  -p 3000:3000 \
-  -v $(pwd)/data:/app/data \
-  expense-tracker:latest
+wsl -d kali-linux docker build -t expense-tracker:latest /mnt/e/projects/expense-tracker ; wsl -d kali-linux docker rm -f expense-tracker-server ; wsl -d kali-linux docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopped -v /mnt/e/projects/expense-tracker/data:/app/data expense-tracker:latest
 ```
+
+#### Windows PowerShell:
+```powershell
+docker build -t expense-tracker:latest .
+docker rm -f expense-tracker-server
+docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopped -v E:\projects\expense-tracker\data:/app/data expense-tracker:latest
+```
+
+#### Linux / macOS:
+```bash
+docker build -t expense-tracker:latest .
+docker rm -f expense-tracker-server
+docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopped -v $(pwd)/data:/app/data expense-tracker:latest
+```
+
+> [!NOTE]
+> **Data Volume Mounting**: Mounting the host directory (`E:\projects\expense-tracker\data:/app/data`) ensures that `budget.sqlite` is saved directly to your host disk. **Database data changes (inserting/updating transactions) do NOT require Docker rebuilds or restarts.**
 
 ### Key Security Features
 1. **Multi-stage build**: Compiles assets in `builder` stage, keeping developer toolchains and devDependencies out of the final container.
