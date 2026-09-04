@@ -238,14 +238,30 @@ CREATE TABLE IF NOT EXISTS gulak_entries (
 );
 ```
 
+### 2.10 `prorated_spends`
+Dedicated isolated expenses logged directly against prorated daily limit rules.
+```sql
+CREATE TABLE IF NOT EXISTS prorated_spends (
+  id TEXT PRIMARY KEY,
+  ruleId TEXT NOT NULL,
+  title TEXT NOT NULL,
+  amount REAL NOT NULL,
+  date TEXT NOT NULL,
+  notes TEXT,
+  addToMainTransactions INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(ruleId) REFERENCES prorated_rules(id) ON DELETE CASCADE
+);
+```
+
 ---
 
 ## 3. Database Maintenance & Operations
 
 ### 3.1 Live Database Statistics
-To inspect active storage metrics via curl:
+To inspect active storage metrics via curl (host port 16001):
 ```bash
-curl http://localhost:3000/api/db/status
+curl http://localhost:16001/api/db/status
 ```
 
 ### 3.2 Backup & Export
@@ -258,6 +274,5 @@ cp data/budget.sqlite data/backup-$(date +%Y%m%d).sqlite
 # Navigate to: Navbar -> Database Status (top right) -> "Download Backup"
 ```
 
-### 3.3 Database Seeding & Zero Reset
-- **Demo Mode**: Call `POST /api/db/load-demo` to populate realistic transactions and test the visual charts.
-- **Clean Slate**: Call `POST /api/db/reset` to wipe all demonstration records and start tracking your real personal finances immediately.
+### 3.3 Security-Protected Reset to Zero
+- **Clean Slate**: Call `POST /api/db/reset-to-zero` with your admin password to wipe transactions and start tracking your real personal finances with clean zero state.
