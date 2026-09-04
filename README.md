@@ -160,7 +160,7 @@ The application includes an enterprise-grade, hardened `Dockerfile` with persist
 
 #### Windows WSL / Kali Linux:
 ```bash
-wsl -d kali-linux docker build -t expense-tracker:latest /mnt/e/projects/expense-tracker ; wsl -d kali-linux docker rm -f expense-tracker-server ; wsl -d kali-linux docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopped -v /mnt/e/projects/expense-tracker/data:/app/data expense-tracker:latest
+wsl -d kali-linux docker build -t expense-tracker:latest /mnt/e/projects/expense-tracker ; wsl -d kali-linux docker rm -f expense-tracker-server ; wsl -d kali-linux docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopped -v /mnt/e/projects/expense-tracker/data:/app/data expense-tracker:latest ; wsl -d kali-linux docker image prune -f
 ```
 
 #### Windows PowerShell:
@@ -168,6 +168,7 @@ wsl -d kali-linux docker build -t expense-tracker:latest /mnt/e/projects/expense
 docker build -t expense-tracker:latest .
 docker rm -f expense-tracker-server
 docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopped -v E:\projects\expense-tracker\data:/app/data expense-tracker:latest
+docker image prune -f
 ```
 
 #### Linux / macOS:
@@ -175,6 +176,7 @@ docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopp
 docker build -t expense-tracker:latest .
 docker rm -f expense-tracker-server
 docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopped -v $(pwd)/data:/app/data expense-tracker:latest
+docker image prune -f
 ```
 
 > [!NOTE]
