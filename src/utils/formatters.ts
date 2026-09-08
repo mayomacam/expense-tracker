@@ -177,7 +177,7 @@ export function generateMonthlyReportCSV(
     const calc = calculateProratedRule(rule, transactions, proratedSpends);
     const statusStr = calc.status === 'overspent' ? 'OVER BUDGET' : 'Within Budget';
     lines.push(
-      `"${rule.name}",${calc.effectiveBudget.toFixed(2)},${calc.dailyLimit.toFixed(2)},${calc.daysInMonth},${calc.totalSpent.toFixed(2)},${statusStr}`
+      `"${rule.name}",${calc.effectiveBudget.toFixed(2)},${calc.nominalDailyLimit.toFixed(2)},${calc.totalDays},${calc.totalSpent.toFixed(2)},${statusStr}`
     );
   });
 
@@ -287,7 +287,7 @@ export function generatePDFReportWindow(
                 <tr>
                   <td><strong>${rule.name}</strong></td>
                   <td>${formatCurrency(calc.effectiveBudget, currency)}</td>
-                  <td>${formatCurrency(calc.dailyLimit, currency)}/day</td>
+                  <td>${formatCurrency(calc.nominalDailyLimit, currency)}/day</td>
                   <td>${formatCurrency(calc.totalSpent, currency)}</td>
                   <td>${isOver ? '<span style="color:#c62828;font-weight:bold;">Over Budget</span>' : 'Within Budget'}</td>
                 </tr>

@@ -1,0 +1,51 @@
+name: Build & Deploy Web Application
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Prevent concurrent deployments mutating the production branch simultaneously
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run code & type checks
+        run: npm run lint
+
+      - name: Build web application
+        run: npm run build
+
+      - name: Prepare SPA assets for static hosting
+        run: |
+          touch dist/.nojekyll
+          cp dist/index.html dist/404.html
+
+      - name: Deploy build files to production branch
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: production
+          folder: dist
+          clean: true
+          commit-message: "deploy: automated web app build [skip ci]"
