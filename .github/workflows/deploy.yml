@@ -1,4 +1,4 @@
-name: Build & Deploy Web Application
+name: Build & Deploy Production Node.js App
 
 on:
   push:
@@ -34,18 +34,63 @@ jobs:
       - name: Run code & type checks
         run: npm run lint
 
-      - name: Build web application
+      - name: Build web frontend assets
         run: npm run build
 
-      - name: Prepare SPA assets for static hosting
+      - name: Prepare production release bundle
         run: |
-          touch dist/.nojekyll
-          cp dist/index.html dist/404.html
+          mkdir -p prod-release
+          # 1. Pre-built frontend assets
+          cp -r dist prod-release/dist
+          # 2. Server and source code required by runtime
+          cp server.ts prod-release/server.ts
+          cp package.json prod-release/package.json
+          cp package-lock.json prod-release/package-lock.json
+          cp tsconfig.json prod-release/tsconfig.json
+          cp -r src prod-release/src
+          # 3. Docker deployment configurations
+          cp Dockerfile prod-release/Dockerfile
+          cp docker-compose.yml prod-release/docker-compose.yml
+          cp .dockerignore prod-release/.dockerignore
+          # 4. Production gitignore (keeps dist/ tracked, ignores node_modules and data/)
+          cat << 'EOF' > prod-release/.gitignore
+          node_modules
+          data
+          .env
+          *.log
+          EOF
+          # 5. Production README
+          cat << 'EOF' > prod-release/README.md
+          # Expense Tracker (Production Release)
 
-      - name: Deploy build files to production branch
+          This branch contains the pre-compiled, self-contained production bundle (Node.js + Express backend + pre-built frontend SPA + SQLite).
+
+          ## How to Run on Any Node.js Host or VPS
+
+          1. **Install production dependencies**:
+             ```bash
+             npm install --omit=dev
+             ```
+
+          2. **Start the application**:
+             ```bash
+             npm start
+             ```
+             - The server listens on `PORT` (or default `3000`).
+             - It automatically serves the pre-compiled frontend from `/dist`.
+             - SQLite database is persisted under `./data/budget.sqlite`.
+
+          ## How to Run with Docker
+
+          ```bash
+          docker compose up -d
+          ```
+          EOF
+
+      - name: Deploy release bundle to production branch
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: production
-          folder: dist
+          folder: prod-release
           clean: true
-          commit-message: "deploy: automated web app build [skip ci]"
+          commit-message: "deploy: automated production node.js release bundle [skip ci]"

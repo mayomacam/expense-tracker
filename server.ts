@@ -18,7 +18,7 @@ import {
   getDatabaseStats,
 } from './src/server/db';
 
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 function getExpectedResetPassword(): string {
   // Read password from unusual persistent secret file location or environment override
@@ -710,7 +710,10 @@ async function startServer() {
   });
 
   // Vite middleware in dev or static files in prod
-  if (process.env.NODE_ENV !== 'production') {
+  const hasDist = fs.existsSync(path.join(process.cwd(), 'dist', 'index.html'));
+  const isDev = process.env.NODE_ENV === 'development' || (!hasDist && process.env.NODE_ENV !== 'production');
+
+  if (isDev) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
