@@ -1,5 +1,43 @@
-node_modules
-dist
-data
+# Dependencies
+node_modules/
+js_version/node_modules/
+vendor/
+
+# Build artifacts
+dist/
+js_version/dist/
+*.zip
+
+# Environment & Configs
 .env
+.env.*
+!.env.example
+
+# Logs & Temp
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==============================================================================
+# Database & Cryptographic Keys (STRICT: NEVER COMMIT SENSITIVE DATA)
+# ==============================================================================
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.key
+.secret_reset_password.key
+
+# Ignore all database files in root data/ and js_version/data/
+data/*
+!data/.htaccess
+!data/.gitkeep
+js_version/data/*
+!js_version/data/.htaccess
+!js_version/data/.gitkeep
+
+# Operating System files
+.DS_Store
+Thumbs.db

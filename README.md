@@ -1,198 +1,40 @@
-# Expense & Prorated Budget Tracker
+# Expense & Prorated Budget Tracker (PHP 8.3 Edition)
 
-A modern, full-stack personal finance application built with **React 19**, **Tailwind CSS v4**, **Node.js (Express)**, and **SQLite (sql.js WASM with durable disk persistence)**. 
+A complete, self-contained PHP 8.3 application with SQLite database persistence, RESTful API backend, and modern responsive dashboard.
 
-Designed for precise daily financial control, this application goes beyond conventional monthly budgeting by introducing **Prorated Daily Spend Limits**, enabling real-time pace tracking, automated recurring items, debt snowball tracking, savings goals, soft-deleted transaction recovery, and comprehensive financial reports.
+## 🚀 Quick Web Hosting Deployment (cPanel / Shared Hosting / VPS)
 
----
-
-## Key Highlights
-
-- **Prorated Daily Limit Budgeting (100% Isolated)**: Automatically calculates daily spending allowances for dynamic expense categories across the exact days in any month, tracking cumulative pacing, pace alerts, and rollover surpluses. Prorated rule spends are strictly isolated via `proratedRuleId` so they do not pollute general category budgets or general total spent.
-- **Independent Gulak (Piggy Bank / Savings Pots)**: A dedicated, fully isolated digital piggy bank feature for micro-savings, spare change, and cash vaults. Includes quick 1-click banknote drops (₹10 to ₹2000), goal progress bars, denomination counters, celebratory confetti, and a Smash Piggy Bank 🔨 cash-out workflow. Gulak data uses separate SQLite tables (`gulak_pots`, `gulak_entries`) and does not impact main expense transactions or monthly budgets.
-- **Durable SQLite Storage (Zero Mock)**: Complete relational database engine running via SQLite WASM (`sql.js`) with atomic file writes to `data/budget.sqlite`. No volatile in-memory loss on server reboot.
-- **Trash Bin & Soft Deletes**: Transactions are protected with a two-stage deletion lifecycle—deleted items move to the Trash Bin where they can be inspected and restored or permanently purged. Reset-to-zero is protected behind password authentication.
-- **Automated Month-Start Recurring Engine**: Scheduled recurring monthly bills, subscriptions, and paychecks are automatically cloned into the live database at the start of each month, with per-item enable/disable controls, deduplication guards, and live execution status.
-- **Hash-Based Bookmarkable Routing**: Full browser history integration supporting direct URLs (`/#/dashboard`, `/#/transactions`, `/#/prorated`, `/#/budgets`, `/#/savings-debt`, `/#/gulak`, `/#/reports`, `/#/categories`, `/#/trash`) with back/forward navigation and refresh persistence.
-- **Resilient UI Architecture**: Built-in animated layout loading skeletons during SQLite hydration, global React Error Boundary with recovery triggers, and centralized modal management.
-- **Savings Goals & Debt Paydown**: Target amounts, remaining balance left to save, deposit/withdrawal timeline logs with timestamps, debt minimum payments, APR % tracking, and overdue status badges.
-- **Export & Reporting**: Multi-format reporting engine offering CSV exports (itemized transactions, category breakdowns, daily pace metrics) and browser-based printable/PDF financial statements.
-- **Security-Hardened Docker Packaging**: Production multi-stage Alpine Dockerfile adhering to least-privilege principles (unprivileged `node` user, `0700` data directory permissions, `tini` PID 1 process management, `--ignore-scripts`, and container healthchecks).
-
----
-
-## Documentation Index
-
-Detailed architectural and technical guides are available in the [`docs/`](./docs) directory:
-
-| Document | Description |
-| :--- | :--- |
-| [**Architecture Overview**](./docs/architecture.md) | Deep dive into client-server design, state management, and component hierarchy. |
-| [**Prorated Budgeting Model**](./docs/prorated-budgeting.md) | Mathematical formulation of daily pace curves, month length factors, and rollover dynamics. |
-| [**API Reference**](./docs/api-reference.md) | Comprehensive REST API endpoints, request schemas, parameters, and status codes. |
-| [**SQLite Database Guide**](./docs/database-sqlite.md) | Table schemas, relations, transaction repositories, and data maintenance procedures. |
-| [**Docker & Deployment**](./docs/docker-deployment.md) | Container architecture, security hardening rationale, Docker Compose, and Cloud Run setup. |
-
----
-
-## Technology Stack
-
-### Frontend
-- **Framework**: React 19 + TypeScript
-- **Styling**: Tailwind CSS v4
-- **Data Visualization**: Recharts (Prorated daily pace curves, spending distributions, monthly comparisons)
-- **Icons**: Lucide React
-- **Build Tool**: Vite 6
-
-### Backend & Storage
-- **Server**: Node.js 20+ with Express
-- **TypeScript Runner**: tsx
-- **Database**: SQLite (via `sql.js` WebAssembly + Node.js filesystem persistence)
-- **Data Location**: `/data/budget.sqlite`
-
-### Deployment & Containerization
-- **Container**: Docker Multi-Stage (Alpine Linux)
-- **Init System**: `tini` (PID 1 zombie reaping and signal routing)
-- **Port**: `3000` (Internal & External)
-
----
-
-## Quickstart
-
-### Prerequisites
-- Node.js `20.x` or later
-- npm `10.x` or later
-
-### Installation & Local Run
-
-1. **Clone the repository and install dependencies:**
+### Option A: Hosting at Domain Root (e.g., https://myexpenses.com)
+1. Upload all files from this folder directly into your hosting web root:
+   - cPanel / Shared Hosting: `public_html/`
+   - Linux VPS: `/var/www/html/`
+2. Ensure write permissions on the `data/` folder and `data/budget.sqlite`:
    ```bash
-   git clone <repository-url>
-   cd expense-prorated-budget-tracker
-   npm install
+   chmod 775 data
+   chmod 664 data/budget.sqlite
    ```
+3. That's it! Visit `https://myexpenses.com/` in your browser.
 
-2. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
-   The application boots Express with Vite middleware and mounts on `http://localhost:3000`.
-
-3. **Verify Database Initialization:**
-   ```bash
-   curl http://localhost:3000/api/db/status
-   ```
-   You should receive a JSON response confirming `budget.sqlite` is online with active table counts.
-
-4. **Production Build & Execution:**
-   ```bash
-   npm run build
-   npm start
-   ```
+### Option B: Hosting in a Subfolder (e.g., https://mywebsite.com/expenses/)
+1. Create a folder in `public_html` named `expenses` (or any name).
+2. Upload all files into `public_html/expenses/`.
+3. Set permissions (`chmod 775 data` and `chmod 664 data/budget.sqlite`).
+4. That's it! The application automatically detects the subfolder path and routes API calls transparently.
 
 ---
 
-## Core Application Modules
+## 🔒 Security Features Built-In
+- **Protected Database**: `.htaccess` at the root and inside `data/` denies all direct HTTP downloads of `budget.sqlite` (`403 Forbidden`).
+- **SQL Injection Prevention**: 100% PDO prepared statements with strict typing.
+- **SQLite WAL Mode**: Enabled with 5-second busy timeout for concurrent read/write transactions.
+- **Admin Password**: Set via `data/.secret_reset_password.key` or environment variable `RESET_PASSWORD`.
 
-### 1. Prorated Daily Limit Tracker
-Standard monthly budgets fail when spending is frontloaded early in the month. The Prorated Daily Limit model divides a category's monthly cap (plus any rollover balance) by the exact number of calendar days in the month:
-$$\text{Daily Allowance} = \frac{\text{Monthly Cap} + \text{Rollover Balance}}{\text{Days in Month}}$$
-
-- Tracks whether your spending on day $D$ is below or above the cumulative expected expenditure:
-$$\text{Cumulative Expected Spend} = \text{Daily Allowance} \times D$$
-- Provides visual pace indicators: *Under Budget* (Green), *Watch Pace* (Amber), or *Over Pace* (Rose).
-
-### 2. Transaction Management & Trash Bin
-- Add income and expense transactions with custom categories, tags, notes, payment methods, and receipt URLs.
-- Filter and search transactions by date range, category, payment method, or title keywords.
-- Deleted transactions are placed in `/api/deleted-transactions`. Users can restore accidentally deleted records at any time.
-
-### 3. Automated Recurring Bills & Subscriptions
-- Configure recurring expenses and incomes with custom amounts, categories, and payment days.
-- **Automated Month-Start Service**: Automatically clones enabled recurring entries into the live SQLite database at the beginning of each month upon initial load, calendar transition, or browser refocus.
-- **Granular Item Controls**: Toggle auto-cloning on/off per individual subscription or bill without deleting the template.
-- **Deduplication Safeguards**: Tracks `lastAppliedMonth` to guarantee records are never duplicated within the same billing period.
-- **Manual Overrides**: Execute on-demand auto-clone checks or apply all active items with one click.
-
-### 4. Savings Goals & Debt Paydown
-- Track savings targets with target dates, visual progress bars, and full deposit/withdrawal logs.
-- Manage debt items (principal, interest rates, minimum payments) with payment history and balance reduction curves.
-
-### 5. SQLite Data Manager Modal
-- Built directly into the UI: Inspect live SQLite table counts, trigger demo dataset population, export SQLite backups, or perform a clean zero-state reset.
+## ⚙️ Requirements
+- **PHP**: 8.1, 8.2, or 8.3
+- **PHP Extensions**: `pdo_sqlite`, `json`, `mbstring`
+- **Web Server**: Apache with `mod_rewrite` enabled (or Nginx)
 
 ---
 
-## REST API Overview
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/db/status` | Returns SQLite engine status, disk size, and table row counts |
-| `POST` | `/api/db/reset` | Resets database to clean zero-record state |
-| `POST` | `/api/db/load-demo` | Populates rich demonstration dataset |
-| `GET` | `/api/transactions` | List all active transactions (sorted by date descending) |
-| `POST` | `/api/transactions` | Create a new transaction |
-| `PUT` | `/api/transactions/:id` | Update an existing transaction |
-| `DELETE` | `/api/transactions/:id` | Soft-delete a transaction (moves to Trash Bin) |
-| `GET` | `/api/deleted-transactions` | Retrieve soft-deleted transactions in Trash Bin |
-| `POST` | `/api/deleted-transactions/:id/restore` | Restore a soft-deleted transaction |
-| `DELETE` | `/api/deleted-transactions` | Permanently purge all items in Trash Bin |
-| `GET` | `/api/categories` | List all budget categories |
-| `GET` | `/api/prorated-rules` | List all prorated daily spend rules |
-| `POST` | `/api/prorated-rules` | Create a prorated budget tracking rule |
-| `GET` | `/api/savings-goals` | List all savings goals and deposit histories |
-| `GET` | `/api/debts` | List all debts and payment histories |
-| `GET` | `/api/recurring` | List all recurring templates with `autoApply` flags |
-| `POST` | `/api/recurring` | Create recurring template (`autoApply`, `dayOfMonth`) |
-| `PUT` | `/api/recurring/:id` | Update recurring item or toggle `autoApply` status |
-| `POST` | `/api/recurring/apply` | Clone pending recurring items (`month`, `forceAll`) into transactions |
-| `GET` | `/api/settings` | Retrieve user preferences and alert thresholds |
-
-*For complete endpoint schemas, query parameters, and payloads, refer to the [API Reference](./docs/api-reference.md).*
-
----
-
-## Docker Deployment
-
-The application includes an enterprise-grade, hardened `Dockerfile` with persistent storage support:
-
-### Quick Run Commands (Port 16001 -> Container Port 3000):
-
-#### Windows WSL / Kali Linux:
-```bash
-wsl -d kali-linux docker build -t expense-tracker:latest /mnt/e/projects/expense-tracker ; wsl -d kali-linux docker rm -f expense-tracker-server ; wsl -d kali-linux docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopped -v /mnt/e/projects/expense-tracker/data:/app/data expense-tracker:latest ; wsl -d kali-linux docker image prune -f
-```
-
-#### Windows PowerShell:
-```powershell
-docker build -t expense-tracker:latest .
-docker rm -f expense-tracker-server
-docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopped -v E:\projects\expense-tracker\data:/app/data expense-tracker:latest
-docker image prune -f
-```
-
-#### Linux / macOS:
-```bash
-docker build -t expense-tracker:latest .
-docker rm -f expense-tracker-server
-docker run -d --name expense-tracker-server -p 16001:3000 --restart unless-stopped -v $(pwd)/data:/app/data expense-tracker:latest
-docker image prune -f
-```
-
-> [!NOTE]
-> **Data Volume Mounting**: Mounting the host directory (`E:\projects\expense-tracker\data:/app/data`) ensures that `budget.sqlite` is saved directly to your host disk. **Database data changes (inserting/updating transactions) do NOT require Docker rebuilds or restarts.**
-
-### Key Security Features
-1. **Multi-stage build**: Compiles assets in `builder` stage, keeping developer toolchains and devDependencies out of the final container.
-2. **Non-root user (`node`)**: Runs under UID `1000` to prevent host privilege escalation.
-3. **Restricted data volume**: `/app/data` is initialized with `0700` permissions.
-4. **Init process (`tini`)**: Properly reaps zombie processes and relays `SIGTERM`/`SIGINT` signals for clean SQLite persistence during container stops.
-5. **Built-in Healthcheck**: Monitors `/api/db/status` every 30 seconds.
-
-*For detailed container configuration, see [Docker & Deployment Guide](./docs/docker-deployment.md).*
-
----
-
-## License
-
-MIT License. Free for personal and commercial use.
+## 📦 Legacy JavaScript / Node.js Version
+The legacy TypeScript, Vite, and Node.js Express version of this project has been archived in the [`js_version/`](./js_version/) directory with its own documentation, Dockerfile, and configs.

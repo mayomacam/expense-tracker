@@ -3,16 +3,39 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Expense &amp; Prorated Budget Tracker</title>
+    <title>Expense &amp; Prorated Budget Tracker (PHP Replica)</title>
     <meta name="description" content="An expense tracker with prorated daily limit analytics, budget alerts, savings &amp; debt goals, recurring items, and CSV exports." />
-    <meta property="og:title" content="Expense &amp; Prorated Budget Tracker" />
+    <meta property="og:title" content="Expense &amp; Prorated Budget Tracker (PHP Replica)" />
     <meta property="og:description" content="An expense tracker with prorated daily limit analytics, budget alerts, savings &amp; debt goals, recurring items, and CSV exports." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        // Robust base URL detection (works with /php_version/, /php_version/index.php, subdomains, and root)
+        let base = (typeof window.__APP_BASE__ === 'string') ? window.__APP_BASE__ : undefined;
+        if (base === undefined) {
+          const p = window.location.pathname;
+          // Strip index.php / index.html or trailing slash
+          base = p.replace(/\/[^\/]*\.[a-zA-Z0-9]+$/, '').replace(/\/$/, '');
+        }
+        window.__APP_BASE__ = base || '';
+
+        // Intercept fetch calls to ensure /api/ requests target the correct base path
+        const originalFetch = window.fetch;
+        window.fetch = function(input, init) {
+          if (typeof input === 'string' && input.startsWith('/api/')) {
+            const prefix = (window.__APP_BASE__ || '').replace(/\/$/, '');
+            input = prefix + input;
+          }
+          return originalFetch.call(this, input, init);
+        };
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-gLNPiLRX.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BnPs86Zf.css">
   </head>
   <body class="antialiased">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
