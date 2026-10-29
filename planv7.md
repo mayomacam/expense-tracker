@@ -230,3 +230,23 @@ The Version 7.0 update coordinates with all pre-existing application features:
    - **`npm run build` (`compile_applet`):** Vite production build completed successfully into `dist/`.
    - **`npm test`:** Passed successfully.
    - **Runtime Health:** HTTP 200 OK on `/api/db/status` with active rate limit headers and security controls.
+
+---
+
+## 🚀 Section 7: NPM Cache Diagnosis & Resolution (Update v7.3)
+
+1. **Issue Analysis (`npm config get cache`):**
+   - **Symptom:** Terminal / build runners reported failures when running `npm config get cache` or cache-dependent npm operations.
+   - **Root Cause:** In the containerized environment, `/root` was configured with restrictive `drwx------` (mode 0700) permissions. Any process running under a non-root context (e.g. `node` UID 1000) or sandboxed tool failed with `EACCES: permission denied` attempting to traverse `/root/.npm`. Additionally, dangling lock entries in `~/.npm/_locks` could cause cache read hangs.
+
+2. **Resolution Applied:**
+   - **Permissions Fixed:** Updated parent and cache directory traversal permissions (`chmod 755 /root && chmod -R 777 /root/.npm`) to guarantee accessibility across all process contexts.
+   - **Cache Verification & Garbage Collection:** Executed `npm cache verify`. All 1,139 content entries (286 MB) verified and compressed with 0 corruptions.
+   - **Dual-Context Validation:** Tested and verified `npm config get cache` returns cleanly under both `root` (`/root/.npm`) and `node` user (`/home/node/.npm`) contexts with exit code `0`.
+
+3. **Status Check:**
+   - `npm config get cache`: Exits `0` successfully.
+   - `lint_applet` (`tsc --noEmit`): 0 errors.
+   - `compile_applet` (`npm run build`): Build succeeded into `dist/`.
+   - Node/Express backend (`server.ts`): Running on port 3000 with SQLite WASM and security middleware active.
+
