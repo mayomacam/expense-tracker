@@ -44,14 +44,18 @@ export function calculateNeedsWantsBreakdown(
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 5);
 
-  const categoryNameMap = new Map(categories.map((c) => [c.id, c.name]));
+  const categoryMap = new Map(categories.map((c) => [c.id, c]));
   const wantsCategoryBreakdown = Object.entries(categoryWantsMap)
-    .map(([catId, amt]) => ({
-      categoryId: catId,
-      categoryName: categoryNameMap.get(catId) || catId,
-      amount: Math.round(amt * 100) / 100,
-      percentage: wantsTotal > 0 ? Math.round((amt / wantsTotal) * 100) : 0,
-    }))
+    .map(([catId, amt]) => {
+      const cat = categoryMap.get(catId);
+      return {
+        categoryId: catId,
+        categoryName: cat?.name || catId,
+        color: cat?.color || '#F59E0B',
+        amount: Math.round(amt * 100) / 100,
+        percentage: wantsTotal > 0 ? Math.round((amt / wantsTotal) * 100) : 0,
+      };
+    })
     .sort((a, b) => b.amount - a.amount);
 
   return {

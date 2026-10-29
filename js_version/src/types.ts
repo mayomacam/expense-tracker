@@ -1,6 +1,8 @@
-export type TransactionType = 'income' | 'expense';
+export type TransactionType = 'income' | 'expense' | 'transfer';
 
 export type PaymentMethod = 'cash' | 'credit_card' | 'debit_card' | 'upi' | 'net_banking' | 'other';
+
+export type SpendNature = 'need' | 'want';
 
 export interface Transaction {
   id: string;
@@ -16,6 +18,10 @@ export interface Transaction {
   recurringFrequency?: string;
   receiptUrl?: string;
   proratedRuleId?: string;
+  nature?: SpendNature;
+  amortizationMonths?: number;
+  transferFrom?: string;
+  transferTo?: string;
 }
 
 export interface Category {
@@ -182,3 +188,69 @@ export type ActiveTab =
   | 'categories'
   | 'trash';
 
+export interface QuickPresetChip {
+  id: string;
+  title: string;
+  amount: number;
+  category: string;
+  paymentMethod: PaymentMethod;
+  nature: SpendNature;
+  icon?: string;
+  tags?: string[];
+  notes?: string;
+}
+
+export interface SafeDailySpendSummary {
+  totalSalary: number;
+  totalFixedCosts: number;
+  discretionarySpentSoFar: number;
+  daysInMonth: number;
+  currentDay: number;
+  daysRemaining: number;
+  spentToday: number;
+  baseDailyAllowance: number;
+  dynamicDailySafeSpend: number;
+  remainingSafeSpendToday: number;
+  tomorrowProjectedAllowance: number;
+  leftoverSpareChange: number;
+}
+
+export interface PantryStapleItem {
+  id: string;
+  title: string;
+  totalAmount: number;
+  amortizationMonths: number;
+  monthlyCost: number;
+  purchaseDate: string;
+  expectedRefillDate: string;
+  daysRemaining: number;
+  status: 'fresh' | 'halfway' | 'refill_soon' | 'depleted';
+  category: string;
+}
+
+export interface NeedsWantsSummary {
+  needsTotal: number;
+  wantsTotal: number;
+  totalDiscretionary: number;
+  wantsPercentage: number;
+  needsPercentage: number;
+  needsCount?: number;
+  wantsCount?: number;
+  topWants?: Transaction[];
+  wantsCategoryBreakdown?: Array<{
+    categoryId: string;
+    categoryName: string;
+    color: string;
+    amount: number;
+    percentage: number;
+  }>;
+}
+
+export interface CreditCardReconciliationSummary {
+  totalUnbilledSwipes: number;
+  totalPaymentsMade: number;
+  netOutstanding: number;
+  dueDay: number;
+  nextDueDate: string;
+  unbilledTransactions: Transaction[];
+}

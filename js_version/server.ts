@@ -17,11 +17,17 @@ import {
   gulakRepo,
   getDatabaseStats,
 } from './src/server/db';
+import {
+  securityHeadersMiddleware,
+  createRateLimiter,
+  validateAndSanitizeTransaction,
+  isValidId,
+  sanitizeText,
+} from './src/server/security';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 function getExpectedResetPassword(): string {
-  // Read password from unusual persistent secret file location or environment override
   const secretFilePath = process.env.RESET_PASSWORD_FILE || path.join(process.cwd(), 'data', '.secret_reset_password.key');
   try {
     if (fs.existsSync(secretFilePath)) {
@@ -44,12 +50,30 @@ function getExpectedResetPassword(): string {
   return defaultPass;
 }
 
+// ---------------------------------------------------------------------------
+// Rate Limiters
+// ---------------------------------------------------------------------------
+const generalApiLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 300,
+  message: 'API rate limit exceeded. Please wait 1 minute before retrying.',
+});
+
+const sensitiveActionLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 25,
+  message: 'Too many administrative attempts. Please wait 1 minute before retrying.',
+});
+
 async function startServer() {
   const app = express();
 
   console.log('Initializing SQLite database engine...');
   await initDatabase();
   console.log('SQLite database ready.');
+
+  // Global security headers
+  app.use(securityHeadersMiddleware);
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
@@ -61,6 +85,9 @@ async function startServer() {
     }
     next(err);
   });
+
+  // Apply general rate limiting to all /api/ endpoints
+  app.use('/api/', generalApiLimiter);
 
   // Database status and management
   app.get('/api/db/status', (req, res) => {
@@ -74,6 +101,15 @@ async function startServer() {
 
   const handleResetToZeroEndpoint = (req: express.Request, res: express.Response) => {
     try {
+      const isConfirmed =
+        req.headers['x-confirm-action'] === 'confirmed' || req.body?.confirmed === true;
+      if (!isConfirmed) {
+        return res.status(400).json({
+          error:
+            'Confirmation required: Must provide header X-Confirm-Action: confirmed or body { confirmed: true }.',
+        });
+      }
+
       const { password } = req.body || {};
       const expectedPassword = getExpectedResetPassword();
       if (!password || password !== expectedPassword) {
@@ -86,8 +122,8 @@ async function startServer() {
     }
   };
 
-  app.post('/api/db/reset', handleResetToZeroEndpoint);
-  app.post('/api/db/reset-to-zero', handleResetToZeroEndpoint);
+  app.post('/api/db/reset', sensitiveActionLimiter, handleResetToZeroEndpoint);
+  app.post('/api/db/reset-to-zero', sensitiveActionLimiter, handleResetToZeroEndpoint);
 
   // Transactions
   app.get('/api/transactions', (req, res) => {
@@ -101,6 +137,9 @@ async function startServer() {
 
   app.get('/api/transactions/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid transaction identifier.' });
+      }
       const tx = transactionRepo.getById(req.params.id);
       if (!tx) return res.status(404).json({ error: 'Transaction not found' });
       res.json(tx);
@@ -111,21 +150,17 @@ async function startServer() {
 
   app.post('/api/transactions', (req, res) => {
     try {
+      const validation = validateAndSanitizeTransaction(req.body);
+      if (!validation.valid || !validation.data) {
+        return res.status(400).json({ error: validation.error || 'Invalid transaction data.' });
+      }
+
       const body = req.body;
-      const id = body.id || `tx-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const id = (body.id && isValidId(body.id)) ? body.id : `tx-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
       const newTx = {
         id,
-        title: body.title,
-        amount: Number(body.amount),
-        type: body.type,
-        category: body.category,
-        date: body.date,
-        tags: Array.isArray(body.tags) ? body.tags : [],
-        notes: body.notes || undefined,
-        paymentMethod: body.paymentMethod || 'credit_card',
-        isRecurring: Boolean(body.isRecurring),
-        recurringFrequency: body.recurringFrequency || undefined,
-        receiptUrl: body.receiptUrl || undefined,
+        ...validation.data,
+        proratedRuleId: body.proratedRuleId && isValidId(body.proratedRuleId) ? body.proratedRuleId : undefined,
       };
       const created = transactionRepo.create(newTx);
       res.status(201).json(created);
@@ -134,13 +169,24 @@ async function startServer() {
     }
   });
 
-  app.post('/api/transactions/import', (req, res) => {
+  app.post('/api/transactions/import', sensitiveActionLimiter, (req, res) => {
     try {
       const { transactions } = req.body;
       if (!Array.isArray(transactions)) {
         return res.status(400).json({ error: 'transactions array is required' });
       }
-      const imported = transactionRepo.bulkInsert(transactions);
+      if (transactions.length > 500) {
+        return res.status(400).json({ error: 'Bulk import limited to 500 records per request.' });
+      }
+      const sanitizedList: any[] = [];
+      for (const raw of transactions) {
+        const val = validateAndSanitizeTransaction(raw);
+        if (val.valid && val.data) {
+          const id = (raw.id && isValidId(raw.id)) ? raw.id : `tx-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+          sanitizedList.push({ id, ...val.data });
+        }
+      }
+      const imported = transactionRepo.bulkInsert(sanitizedList);
       res.status(201).json({ success: true, count: imported.length, transactions: imported });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -149,6 +195,9 @@ async function startServer() {
 
   app.put('/api/transactions/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid transaction identifier.' });
+      }
       const updated = transactionRepo.update(req.params.id, req.body);
       if (!updated) return res.status(404).json({ error: 'Transaction not found' });
       res.json(updated);
@@ -159,6 +208,9 @@ async function startServer() {
 
   app.delete('/api/transactions/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid transaction identifier.' });
+      }
       transactionRepo.delete(req.params.id);
       res.json({ success: true, id: req.params.id });
     } catch (err: any) {
@@ -178,6 +230,9 @@ async function startServer() {
 
   app.post('/api/deleted-transactions/:id/restore', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid transaction identifier.' });
+      }
       const restored = deletedTransactionRepo.restore(req.params.id);
       if (!restored) return res.status(404).json({ error: 'Deleted transaction not found' });
       res.json({ success: true, restored });
@@ -208,12 +263,16 @@ async function startServer() {
   app.post('/api/categories', (req, res) => {
     try {
       const body = req.body;
-      const id = body.id || `cat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const id = (body.id && isValidId(body.id)) ? body.id : `cat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const name = sanitizeText(body.name, 64);
+      if (!name) {
+        return res.status(400).json({ error: 'Category name is required.' });
+      }
       const newCat = {
         id,
-        name: body.name,
-        icon: body.icon || 'Tag',
-        color: body.color || '#6366F1',
+        name,
+        icon: sanitizeText(body.icon || 'Tag', 32),
+        color: sanitizeText(body.color || '#6366F1', 32),
         monthlyBudget: Number(body.monthlyBudget || 0),
         isCustom: true,
       };
@@ -226,6 +285,9 @@ async function startServer() {
 
   app.put('/api/categories/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid category identifier.' });
+      }
       const updated = categoryRepo.update(req.params.id, req.body);
       if (!updated) return res.status(404).json({ error: 'Category not found' });
       res.json(updated);
@@ -236,6 +298,9 @@ async function startServer() {
 
   app.delete('/api/categories/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid category identifier.' });
+      }
       categoryRepo.delete(req.params.id);
       res.json({ success: true, id: req.params.id });
     } catch (err: any) {
@@ -256,18 +321,24 @@ async function startServer() {
   app.post('/api/prorated-rules', (req, res) => {
     try {
       const body = req.body;
-      const id = body.id || `rule-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const id = (body.id && isValidId(body.id)) ? body.id : `rule-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const name = sanitizeText(body.name, 64);
+      if (!name) {
+        return res.status(400).json({ error: 'Prorated rule name is required.' });
+      }
       const newRule = {
         id,
-        name: body.name,
-        categoryId: body.categoryId || undefined,
-        targetTags: Array.isArray(body.targetTags) ? body.targetTags : [],
-        monthlyMaxSpend: Number(body.monthlyMaxSpend),
+        name,
+        categoryId: body.categoryId ? sanitizeText(body.categoryId, 64) : undefined,
+        targetTags: Array.isArray(body.targetTags)
+          ? body.targetTags.slice(0, 20).map((t: any) => sanitizeText(t, 40))
+          : [],
+        monthlyMaxSpend: Number(body.monthlyMaxSpend || 0),
         month: body.month || new Date().toISOString().slice(0, 7),
         rolloverEnabled: Boolean(body.rolloverEnabled),
         rolloverAmount: Number(body.rolloverAmount || 0),
         alertThresholdPercent: Number(body.alertThresholdPercent || 100),
-        notes: body.notes || undefined,
+        notes: body.notes ? sanitizeText(body.notes, 1000) : undefined,
       };
       const created = proratedRuleRepo.create(newRule);
       res.status(201).json(created);
@@ -278,6 +349,9 @@ async function startServer() {
 
   app.put('/api/prorated-rules/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid rule identifier.' });
+      }
       const updated = proratedRuleRepo.update(req.params.id, req.body);
       if (!updated) return res.status(404).json({ error: 'Prorated rule not found' });
       res.json(updated);
@@ -288,6 +362,9 @@ async function startServer() {
 
   app.delete('/api/prorated-rules/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid rule identifier.' });
+      }
       proratedRuleRepo.delete(req.params.id);
       res.json({ success: true, id: req.params.id });
     } catch (err: any) {
@@ -309,14 +386,18 @@ async function startServer() {
   app.post('/api/prorated-spends', (req, res) => {
     try {
       const body = req.body;
-      const id = body.id || `pspend-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const id = (body.id && isValidId(body.id)) ? body.id : `pspend-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const title = sanitizeText(body.title, 255);
+      if (!title) {
+        return res.status(400).json({ error: 'Prorated spend title is required.' });
+      }
       const newSpend = {
         id,
-        ruleId: body.ruleId,
-        title: body.title,
-        amount: Number(body.amount),
-        date: body.date,
-        notes: body.notes || undefined,
+        ruleId: sanitizeText(body.ruleId, 64),
+        title,
+        amount: Number(body.amount || 0),
+        date: body.date || new Date().toISOString().slice(0, 10),
+        notes: body.notes ? sanitizeText(body.notes, 1000) : undefined,
         addToMainTransactions: Boolean(body.addToMainTransactions),
       };
       const created = proratedSpendRepo.create(newSpend);
@@ -328,6 +409,9 @@ async function startServer() {
 
   app.delete('/api/prorated-spends/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid spend identifier.' });
+      }
       proratedSpendRepo.delete(req.params.id);
       res.json({ success: true, id: req.params.id });
     } catch (err: any) {
@@ -348,17 +432,21 @@ async function startServer() {
   app.post('/api/savings-goals', (req, res) => {
     try {
       const body = req.body;
-      const id = body.id || `goal-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const id = (body.id && isValidId(body.id)) ? body.id : `goal-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const name = sanitizeText(body.name, 64);
+      if (!name) {
+        return res.status(400).json({ error: 'Goal name is required.' });
+      }
       const newGoal = savingsRepo.create({
         id,
-        name: body.name,
-        targetAmount: Number(body.targetAmount),
+        name,
+        targetAmount: Number(body.targetAmount || 0),
         currentAmount: Number(body.currentAmount || 0),
-        targetDate: body.targetDate,
-        icon: body.icon || 'PiggyBank',
-        color: body.color || '#10B981',
-        category: body.category || 'General',
-        notes: body.notes || undefined,
+        targetDate: body.targetDate || new Date().toISOString().slice(0, 10),
+        icon: sanitizeText(body.icon || 'PiggyBank', 32),
+        color: sanitizeText(body.color || '#10B981', 32),
+        category: sanitizeText(body.category || 'General', 64),
+        notes: body.notes ? sanitizeText(body.notes, 1000) : undefined,
         history: [],
       });
       res.status(201).json(newGoal);
@@ -369,6 +457,9 @@ async function startServer() {
 
   app.put('/api/savings-goals/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid goal identifier.' });
+      }
       const updated = savingsRepo.update(req.params.id, req.body);
       if (!updated) return res.status(404).json({ error: 'Goal not found' });
       res.json(updated);
@@ -379,6 +470,9 @@ async function startServer() {
 
   app.delete('/api/savings-goals/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid goal identifier.' });
+      }
       savingsRepo.delete(req.params.id);
       res.json({ success: true, id: req.params.id });
     } catch (err: any) {
@@ -388,13 +482,16 @@ async function startServer() {
 
   app.post('/api/savings-goals/:id/contributions', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid goal identifier.' });
+      }
       const { amount, note, type } = req.body;
       const historyItem = {
         id: `contrib-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         date: new Date().toISOString().slice(0, 10),
-        amount: Number(amount),
-        note: note || undefined,
-        type: type || 'deposit',
+        amount: Number(amount || 0),
+        note: note ? sanitizeText(note, 500) : undefined,
+        type: (type === 'withdraw' ? 'withdraw' : 'deposit') as 'deposit' | 'withdraw',
       };
       const updatedGoal = savingsRepo.addContribution(req.params.id, historyItem);
       if (!updatedGoal) return res.status(404).json({ error: 'Goal not found' });
@@ -417,18 +514,22 @@ async function startServer() {
   app.post('/api/debts', (req, res) => {
     try {
       const body = req.body;
-      const id = body.id || `debt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-      const principal = Number(body.totalPrincipal);
+      const id = (body.id && isValidId(body.id)) ? body.id : `debt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const name = sanitizeText(body.name, 64);
+      if (!name) {
+        return res.status(400).json({ error: 'Debt name is required.' });
+      }
+      const principal = Number(body.totalPrincipal || 0);
       const newDebt = debtRepo.create({
         id,
-        name: body.name,
+        name,
         totalPrincipal: principal,
         remainingBalance: Number(body.remainingBalance ?? principal),
         interestRate: Number(body.interestRate || 0),
         minimumPayment: Number(body.minimumPayment || 0),
         dueDay: Number(body.dueDay || 1),
-        notes: body.notes || undefined,
-        color: body.color || '#F43F5E',
+        notes: body.notes ? sanitizeText(body.notes, 1000) : undefined,
+        color: sanitizeText(body.color || '#F43F5E', 32),
         payments: [],
       });
       res.status(201).json(newDebt);
@@ -439,6 +540,9 @@ async function startServer() {
 
   app.put('/api/debts/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid debt identifier.' });
+      }
       const updated = debtRepo.update(req.params.id, req.body);
       if (!updated) return res.status(404).json({ error: 'Debt not found' });
       res.json(updated);
@@ -449,6 +553,9 @@ async function startServer() {
 
   app.delete('/api/debts/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid debt identifier.' });
+      }
       debtRepo.delete(req.params.id);
       res.json({ success: true, id: req.params.id });
     } catch (err: any) {
@@ -458,14 +565,17 @@ async function startServer() {
 
   app.post('/api/debts/:id/payments', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid debt identifier.' });
+      }
       const { amount, principalPaid, interestPaid, date, note } = req.body;
       const paymentItem = {
         id: `pay-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         date: date || new Date().toISOString().slice(0, 10),
-        amount: Number(amount),
-        principalPaid: Number(principalPaid ?? amount),
+        amount: Number(amount || 0),
+        principalPaid: Number(principalPaid ?? amount ?? 0),
         interestPaid: Number(interestPaid || 0),
-        note: note || undefined,
+        note: note ? sanitizeText(note, 500) : undefined,
       };
       const updatedDebt = debtRepo.recordPayment(req.params.id, paymentItem);
       if (!updatedDebt) return res.status(404).json({ error: 'Debt not found' });
@@ -477,6 +587,9 @@ async function startServer() {
 
   app.delete('/api/debts/:debtId/payments/:paymentId', (req, res) => {
     try {
+      if (!isValidId(req.params.debtId) || !isValidId(req.params.paymentId)) {
+        return res.status(400).json({ error: 'Invalid debt or payment identifier.' });
+      }
       const updatedDebt = debtRepo.deletePayment(req.params.debtId, req.params.paymentId);
       if (!updatedDebt) return res.status(404).json({ error: 'Debt or payment log not found' });
       res.json(updatedDebt);
@@ -498,17 +611,23 @@ async function startServer() {
   app.post('/api/recurring', (req, res) => {
     try {
       const body = req.body;
-      const id = body.id || `rec-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const id = (body.id && isValidId(body.id)) ? body.id : `rec-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const title = sanitizeText(body.title, 255);
+      if (!title) {
+        return res.status(400).json({ error: 'Recurring item title is required.' });
+      }
       const newItem = {
         id,
-        title: body.title,
-        amount: Number(body.amount),
+        title,
+        amount: Number(body.amount || 0),
         type: body.type || 'expense',
-        category: body.category,
+        category: sanitizeText(body.category || 'General', 64),
         frequency: body.frequency || 'monthly',
         dayOfMonth: Number(body.dayOfMonth || 1),
-        autoApply: body.autoApply !== false, // default true
-        tags: Array.isArray(body.tags) ? body.tags : [],
+        autoApply: body.autoApply !== false,
+        tags: Array.isArray(body.tags)
+          ? body.tags.slice(0, 20).map((t: any) => sanitizeText(t, 40))
+          : [],
         paymentMethod: body.paymentMethod || 'credit_card',
         lastAppliedMonth: body.lastAppliedMonth || undefined,
         isActive: body.isActive !== false,
@@ -522,6 +641,9 @@ async function startServer() {
 
   app.put('/api/recurring/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid recurring identifier.' });
+      }
       const updated = recurringRepo.update(req.params.id, req.body);
       if (!updated) return res.status(404).json({ error: 'Recurring item not found' });
       res.json(updated);
@@ -532,6 +654,9 @@ async function startServer() {
 
   app.delete('/api/recurring/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid recurring identifier.' });
+      }
       recurringRepo.delete(req.params.id);
       res.json({ success: true, id: req.params.id });
     } catch (err: any) {
@@ -539,8 +664,6 @@ async function startServer() {
     }
   });
 
-  // Clone recurring transactions for month
-  // If forceAll is false, only items with autoApply === true are cloned!
   app.post('/api/recurring/apply', (req, res) => {
     try {
       const { month, forceAll } = req.body;
@@ -551,7 +674,6 @@ async function startServer() {
 
       for (const rec of allRecurring) {
         if (!rec.isActive) continue;
-        // Check per-item autoApply setting unless forceAll is explicitly requested
         if (!forceAll && rec.autoApply === false) continue;
         if (rec.lastAppliedMonth === targetMonth) continue;
 
@@ -615,7 +737,7 @@ async function startServer() {
   app.post('/api/alerts/read', (req, res) => {
     try {
       const { alertId } = req.body;
-      if (alertId) readAlertsRepo.markRead(alertId);
+      if (alertId && isValidId(alertId)) readAlertsRepo.markRead(alertId);
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -625,7 +747,10 @@ async function startServer() {
   app.post('/api/alerts/read/all', (req, res) => {
     try {
       const { alertIds } = req.body;
-      if (Array.isArray(alertIds)) readAlertsRepo.markAllRead(alertIds);
+      if (Array.isArray(alertIds)) {
+        const validIds = alertIds.filter((id) => isValidId(id));
+        readAlertsRepo.markAllRead(validIds);
+      }
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -662,6 +787,9 @@ async function startServer() {
 
   app.put('/api/gulak/pots/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid pot identifier.' });
+      }
       const updated = gulakRepo.update(req.params.id, req.body);
       if (!updated) return res.status(404).json({ error: 'Gulak pot not found' });
       res.json(updated);
@@ -672,6 +800,9 @@ async function startServer() {
 
   app.delete('/api/gulak/pots/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid pot identifier.' });
+      }
       gulakRepo.delete(req.params.id);
       res.json({ success: true, id: req.params.id });
     } catch (err: any) {
@@ -681,6 +812,9 @@ async function startServer() {
 
   app.post('/api/gulak/pots/:id/entries', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid pot identifier.' });
+      }
       const updatedPot = gulakRepo.addEntry(req.params.id, req.body);
       if (!updatedPot) return res.status(404).json({ error: 'Gulak pot not found' });
       res.json(updatedPot);
@@ -691,8 +825,11 @@ async function startServer() {
 
   app.post('/api/gulak/pots/:id/smash', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid pot identifier.' });
+      }
       const { note } = req.body || {};
-      const updatedPot = gulakRepo.smash(req.params.id, note);
+      const updatedPot = gulakRepo.smash(req.params.id, note ? sanitizeText(note, 500) : undefined);
       if (!updatedPot) return res.status(404).json({ error: 'Gulak pot not found' });
       res.json(updatedPot);
     } catch (err: any) {
@@ -702,6 +839,9 @@ async function startServer() {
 
   app.delete('/api/gulak/entries/:id', (req, res) => {
     try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid entry identifier.' });
+      }
       const updatedPot = gulakRepo.deleteEntry(req.params.id);
       res.json({ success: true, pot: updatedPot });
     } catch (err: any) {
