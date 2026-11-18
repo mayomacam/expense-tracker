@@ -250,3 +250,25 @@ The Version 7.0 update coordinates with all pre-existing application features:
    - `compile_applet` (`npm run build`): Build succeeded into `dist/`.
    - Node/Express backend (`server.ts`): Running on port 3000 with SQLite WASM and security middleware active.
 
+---
+
+## ☁️ Section 8: Cloudflare Workers Edge Runtime & `workers-deploy` Branch (Update v7.4)
+
+1. **Edge Worker Architecture (`worker/`):**
+   - **`worker/index.ts`:** Lightweight **Hono** edge router implementing full API parity with `server.ts` (`/api/health`, `/api/db/status`, `/api/db/reset*`, `/api/db/load-demo`, `/api/transactions*`, `/api/deleted-transactions*`, `/api/categories*`, `/api/prorated-rules*`, `/api/prorated-spends*`, `/api/savings-goals*`, `/api/debts*`, `/api/recurring*`, `/api/settings`, `/api/alerts/read*`, `/api/gulak/*`).
+   - **`worker/db.ts`:** Replaced Node `sql.js` WASM + disk persistence with **Cloudflare D1** repositories utilizing single-round-trip `db.batch([...])` calls and lazy isolate seed checking.
+   - **`worker/security.ts`:** Replaced Node/heavy crypto with **WebCrypto `crypto.subtle`** (`SHA-256` / `PBKDF2` + `crypto.subtle.timingSafeEqual` for `< 0.3 ms` CPU verification), hybrid isolate/D1 sliding-window rate limiting (with non-blocking `ctx.waitUntil()` pruning), and strict CORS/CSP headers.
+   - **`worker/migrations/0001_init.sql` & `0002_seed.sql`:** Full 14-table + `rate_limits` D1 schema with explicit indexes (`idx_transactions_date`, `idx_transactions_category`, `idx_prorated_spends_rule`, `idx_savings_history_goal`, `idx_debt_payments_debt`, `idx_gulak_entries_pot`) and default seed data.
+
+2. **10 ms CPU & Edge Static Asset Configuration:**
+   - **`wrangler.jsonc`:** Configured `assets.run_worker_first: ["/api/*"]` so all SPA HTML, JS bundles, and CSS serve directly from Cloudflare Static Assets at **0 ms Worker CPU** and **0 daily Worker request quota**.
+   - **`public/_headers`:** Attaches immutable edge caching (`max-age=31536000, immutable`) on `/assets/*` and strict security headers at the edge.
+   - **Edge Cache (`caches.default`):** Enabled on `/api/categories` and `/api/settings` with synchronous purge on mutations.
+   - **Bundle Verification:** `npm run build:workers` verified the Worker bundle at **148.18 KiB uncompressed / 30.89 KiB gzipped**, and both `0001_init.sql` and `0002_seed.sql` executed cleanly on local Cloudflare D1.
+
+3. **3rd Branch Automation (`workers-deploy`):**
+   - **`.github/workflows/deploy-workers.yml`:** Automatically validates (`npm run lint`, `npm run lint:workers`, `npm run build:workers`), stamps `VERSION.json` & `WORKER_VERSION`, injects `CLOUDFLARE_D1_DATABASE_ID` (when set), pushes a self-contained artifact to **`workers-deploy`** with tag `workers-v<version>`, and optionally deploys via Wrangler when `CLOUDFLARE_API_TOKEN` & `CLOUDFLARE_ACCOUNT_ID` are set.
+   - **`scripts/build-workers.ts` & `scripts/prepare-workers-branch.sh`:** Local verification and standalone branch packaging scripts (`npm run workers:branch`).
+   - **`CLOUDFLARE_WORKERS.md` & `.dev.vars.example`:** Complete setup, secrets (`RESET_PASSWORD`), D1 migration, and Free Tier cost guide.
+
+

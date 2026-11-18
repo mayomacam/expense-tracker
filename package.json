@@ -7,20 +7,28 @@
     "build": "vite build",
     "start": "tsx server.ts",
     "lint": "tsc --noEmit",
+    "lint:workers": "tsc -p worker/tsconfig.json --noEmit",
     "typecheck": "tsc --noEmit",
+    "build:workers": "tsx scripts/build-workers.ts",
+    "dev:workers": "wrangler dev",
+    "deploy:workers": "wrangler deploy",
+    "workers:branch": "bash scripts/prepare-workers-branch.sh",
     "test": "tsc --noEmit"
   },
   "dependencies": {
+    "@cloudflare/workers-types": "^5.20261118.1",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "express": "^4.22.3",
+    "hono": "^4.13.19",
     "lucide-react": "^0.546.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.3",
     "recharts": "^3.10.1",
     "sql.js": "^1.14.2",
-    "tsx": "^4.23.13"
+    "tsx": "^4.23.13",
+    "wrangler": "^4.164.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

@@ -1,0 +1,109 @@
+name: Deploy Cloudflare Workers (workers-deploy branch)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: workers-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish-workers-branch:
+    name: Build, Stamp & Publish workers-deploy Branch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compute Worker Release Version
+        id: version
+        run: |
+          BASE_VER=$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')")
+          WORKER_VER="${BASE_VER}.${GITHUB_RUN_NUMBER}"
+          echo "worker_version=${WORKER_VER}" >> "$GITHUB_OUTPUT"
+          echo "tag=workers-v${WORKER_VER}" >> "$GITHUB_OUTPUT"
+
+      - name: Inject D1 Database ID & Version into wrangler.jsonc
+        env:
+          CF_D1_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+          WORKER_VER: ${{ steps.version.outputs.worker_version }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            let raw = fs.readFileSync("wrangler.jsonc", "utf8");
+            raw = raw.replace(/"WORKER_VERSION":\s*"[^"]*"/, `"WORKER_VERSION": "${process.env.WORKER_VER}"`);
+            if (process.env.CF_D1_ID && process.env.CF_D1_ID.trim()) {
+              raw = raw.replace(/REPLACE_WITH_YOUR_D1_DATABASE_ID/g, process.env.CF_D1_ID.trim());
+            }
+            fs.writeFileSync("wrangler.jsonc", raw);
+          '
+
+      - name: Run Typechecks & Build Workers Artifact
+        env:
+          WORKER_VERSION: ${{ steps.version.outputs.worker_version }}
+        run: |
+          npm run lint
+          npm run lint:workers
+          npm run build:workers
+
+      - name: Assemble Clean workers-deploy Branch Directory
+        run: |
+          mkdir -p workers-release
+          cp -r dist workers-release/dist
+          cp -r worker workers-release/worker
+          cp wrangler.jsonc workers-release/wrangler.jsonc
+          cp package.json workers-release/package.json
+          cp package-lock.json workers-release/package-lock.json
+          cp VERSION.json workers-release/VERSION.json
+          [ -f CLOUDFLARE_WORKERS.md ] && cp CLOUDFLARE_WORKERS.md workers-release/CLOUDFLARE_WORKERS.md
+          cat << 'EOF' > workers-release/.gitignore
+          node_modules/
+          .wrangler/
+          .dev.vars
+          .env*
+          *.sqlite
+          *.db
+          EOF
+
+      - name: Push Self-Contained Artifact to workers-deploy Branch
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: workers-deploy
+          folder: workers-release
+          clean: true
+          commit-message: "workers-deploy: release ${{ steps.version.outputs.tag }} [skip ci]"
+
+      - name: Create & Push Version Git Tag
+        run: |
+          git fetch origin workers-deploy
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f -a "${{ steps.version.outputs.tag }}" origin/workers-deploy -m "Cloudflare Workers release ${{ steps.version.outputs.tag }}"
+          git push origin "refs/tags/${{ steps.version.outputs.tag }}" --force
+
+      - name: Apply D1 Migrations & Deploy to Cloudflare Workers (when secrets configured)
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' && vars.CLOUDFLARE_D1_DATABASE_ID != '' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx wrangler d1 migrations apply expense-budget-tracker-db --remote
+          npx wrangler deploy
