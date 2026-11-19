@@ -66,7 +66,7 @@ Cloudflare Workers Free Tier enforces a **hard 10 ms CPU time ceiling per invoca
 ```bash
 npx wrangler d1 create expense-budget-tracker-db
 ```
-Copy the returned `database_id` into `wrangler.jsonc` (replacing `REPLACE_WITH_YOUR_D1_DATABASE_ID`), **OR** set GitHub Actions Repository Variable `CLOUDFLARE_D1_DATABASE_ID` so CI injects it automatically into `workers-deploy`.
+Wrangler binds to `expense-budget-tracker-db` by `database_name` in `wrangler.jsonc` — no `database_id` is needed in the config file.
 
 ### Step 2: Build, Apply Schema & Seed Data
 ```bash
@@ -101,7 +101,6 @@ npm run workers:branch
 1. Every push to `main` (or manual dispatch) runs `.github/workflows/deploy-workers.yml`.
 2. It runs `npm run lint`, `npm run lint:workers`, and `npm run build:workers`, stamps `VERSION.json` + `wrangler.jsonc`, and force-pushes the self-contained artifact to **`workers-deploy`** with tag `workers-v<version>`.
 3. To auto-deploy directly from GitHub Actions, set in GitHub (`Settings -> Secrets and variables -> Actions`):
-   - **Variable**: `CLOUDFLARE_D1_DATABASE_ID`
    - **Secrets**: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
 
 ---
